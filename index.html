@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess Predictor Board</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="controls">
+        <h1>Chess Capture Overlay</h1>
+        <div class="mode-switch" role="group" aria-label="Board interaction mode">
+          <button id="moveModeBtn" class="active">Move mode</button>
+          <button id="placeModeBtn">Place mode</button>
+        </div>
+
+        <div class="side-toggle">
+          <label for="mySideSelect">My side (green overlay)</label>
+          <select id="mySideSelect">
+            <option value="w">White</option>
+            <option value="b">Black</option>
+          </select>
+        </div>
+
+        <fieldset id="piecePalette" class="palette" disabled>
+          <legend>Place piece</legend>
+        </fieldset>
+
+        <p class="hint">
+          Move mode: select a piece then click a highlighted legal destination.<br />
+          Place mode: pick a piece and click any square to place/replace it.
+        </p>
+      </section>
+
+      <section class="board-wrap">
+        <div id="board" class="board" aria-label="Chess board"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

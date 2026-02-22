@@ -13,6 +13,15 @@ const PIECE_UNICODE = {
   bp: "♟",
 };
 
+const PIECE_LETTER = {
+  p: "",
+  n: "N",
+  b: "B",
+  r: "R",
+  q: "Q",
+  k: "K",
+};
+
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 const boardEl = document.getElementById("board");
@@ -21,6 +30,12 @@ const placeModeBtn = document.getElementById("placeModeBtn");
 const mySideSelect = document.getElementById("mySideSelect");
 const boardSideSelect = document.getElementById("boardSideSelect");
 const piecePalette = document.getElementById("piecePalette");
+const whitePaletteEl = document.getElementById("whitePalette");
+const blackPaletteEl = document.getElementById("blackPalette");
+const toolPaletteEl = document.getElementById("toolPalette");
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
+const historyListEl = document.getElementById("historyList");
 
 let mode = "move";
 let mySide = "w";
@@ -32,6 +47,9 @@ let selectedPlaceSource = null;
 let hoveredPiece = null;
 
 let board = createInitialBoard();
+let historySnapshots = [cloneBoard(board)];
+let moveHistory = [];
+let historyPointer = 0;
 
 initPalette();
 wireEvents();
@@ -55,6 +73,8 @@ function wireEvents() {
     hoveredPiece = null;
     render();
   });
+  undoBtn.addEventListener("click", undoMove);
+  redoBtn.addEventListener("click", redoMove);
 }
 
 function setMode(nextMode) {
@@ -70,34 +90,11 @@ function setMode(nextMode) {
 }
 
 function initPalette() {
-  const placementChoices = [
-    "wk",
-    "wq",
-    "wr",
-    "wb",
-    "wn",
-    "wp",
-    "bk",
-    "bq",
-    "br",
-    "bb",
-    "bn",
-    "bp",
-  ];
+  const whitePieces = ["wk", "wq", "wr", "wb", "wn", "wp"];
+  const blackPieces = ["bk", "bq", "br", "bb", "bn", "bp"];
 
-  placementChoices.forEach((piece) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = PIECE_UNICODE[piece];
-    button.title = piece;
-    button.classList.toggle("selected", piece === selectedPalettePiece);
-    button.addEventListener("click", () => {
-      selectedPalettePiece = piece;
-      [...piecePalette.querySelectorAll("button")].forEach((btn) => btn.classList.remove("selected"));
-      button.classList.add("selected");
-    });
-    piecePalette.append(button);
-  });
+  whitePieces.forEach((piece) => whitePaletteEl.append(createPaletteButton(piece)));
+  blackPieces.forEach((piece) => blackPaletteEl.append(createPaletteButton(piece)));
 
   const clearButton = document.createElement("button");
   clearButton.type = "button";
@@ -105,10 +102,27 @@ function initPalette() {
   clearButton.title = "Clear square";
   clearButton.addEventListener("click", () => {
     selectedPalettePiece = "";
-    [...piecePalette.querySelectorAll("button")].forEach((btn) => btn.classList.remove("selected"));
-    clearButton.classList.add("selected");
+    updateSelectedPaletteButton(clearButton);
   });
-  piecePalette.append(clearButton);
+  toolPaletteEl.append(clearButton);
+}
+
+function createPaletteButton(piece) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = PIECE_UNICODE[piece];
+  button.title = piece;
+  button.classList.toggle("selected", piece === selectedPalettePiece);
+  button.addEventListener("click", () => {
+    selectedPalettePiece = piece;
+    updateSelectedPaletteButton(button);
+  });
+  return button;
+}
+
+function updateSelectedPaletteButton(activeButton) {
+  [...piecePalette.querySelectorAll("button")].forEach((btn) => btn.classList.remove("selected"));
+  activeButton.classList.add("selected");
 }
 
 function render() {
@@ -116,15 +130,7 @@ function render() {
   const myCaptures = getCapturableSquares(mySide);
   const oppCaptures = getCapturableSquares(mySide === "w" ? "b" : "w");
   const attackedOccupiedSquares = getAttackedOccupiedSquares();
-  const hoveredAttacks = new Set();
-  if (hoveredPiece) {
-    const hovered = board[hoveredPiece.row][hoveredPiece.col];
-    if (hovered) {
-      getAttackSquaresForPiece(hoveredPiece.row, hoveredPiece.col, hovered).forEach((sq) =>
-        hoveredAttacks.add(key(sq.row, sq.col)),
-      );
-    }
-  }
+  const hoveredAttacks = getHoveredAttacks();
 
   const selectedWhiteCaptureTargets = new Set();
   if (mode === "move" && selectedSquare) {
@@ -177,6 +183,7 @@ function render() {
         pieceEl.textContent = PIECE_UNICODE[piece];
         square.append(pieceEl);
       }
+
       const coord = document.createElement("span");
       coord.className = "coord";
       coord.textContent = `${FILES[col]}${8 - row}`;
@@ -187,9 +194,52 @@ function render() {
       boardEl.append(square);
     }
   }
+
+  renderHistory();
+  undoBtn.disabled = historyPointer === 0;
+  redoBtn.disabled = historyPointer >= moveHistory.length;
 }
 
+function renderHistory() {
+  historyListEl.innerHTML = "";
 
+  for (let fullMove = 0; fullMove * 2 < moveHistory.length; fullMove += 1) {
+    const whiteIdx = fullMove * 2;
+    const blackIdx = whiteIdx + 1;
+    const li = document.createElement("li");
+
+    const white = formatMoveForHistory(moveHistory[whiteIdx], whiteIdx + 1);
+    const black = moveHistory[blackIdx] ? formatMoveForHistory(moveHistory[blackIdx], blackIdx + 1) : "";
+    li.textContent = `${fullMove + 1}. ${white}${black ? ` ${black}` : ""}`;
+
+    historyListEl.append(li);
+  }
+}
+
+function formatMoveForHistory(notation, plyNumber) {
+  if (plyNumber <= historyPointer) {
+    return notation;
+  }
+  return `(${notation})`;
+}
+
+function getHoveredAttacks() {
+  const hoveredAttacks = new Set();
+  if (!hoveredPiece) {
+    return hoveredAttacks;
+  }
+
+  const hovered = board[hoveredPiece.row][hoveredPiece.col];
+  if (!hovered) {
+    return hoveredAttacks;
+  }
+
+  getAttackSquaresForPiece(hoveredPiece.row, hoveredPiece.col, hovered).forEach((sq) => {
+    hoveredAttacks.add(key(sq.row, sq.col));
+  });
+
+  return hoveredAttacks;
+}
 
 function onSquareMouseEnter(row, col) {
   const piece = board[row][col];
@@ -215,6 +265,7 @@ function applyPalettePiece(row, col) {
   selectedSquare = null;
   selectedPlaceSource = null;
   legalMoves = [];
+  resetHistoryFromCurrentBoard();
   render();
 }
 
@@ -228,6 +279,7 @@ function onSquareRightClick(event, row, col) {
   selectedSquare = null;
   selectedPlaceSource = null;
   legalMoves = [];
+  resetHistoryFromCurrentBoard();
   render();
 }
 
@@ -246,6 +298,7 @@ function onSquareClick(row, col) {
       hoveredPiece = null;
       selectedSquare = null;
       legalMoves = [];
+      resetHistoryFromCurrentBoard();
       render();
       return;
     }
@@ -266,10 +319,17 @@ function onSquareClick(row, col) {
   const clickedPiece = board[row][col];
 
   if (selectedSquare && legalMoves.some((move) => move.row === row && move.col === col)) {
-    board[row][col] = board[selectedSquare.row][selectedSquare.col];
+    const movingPiece = board[selectedSquare.row][selectedSquare.col];
+    const capturedPiece = board[row][col];
+
+    board[row][col] = movingPiece;
     board[selectedSquare.row][selectedSquare.col] = "";
+
+    recordMove(buildSanNotation(movingPiece, selectedSquare, { row, col }, capturedPiece));
+
     selectedSquare = null;
     legalMoves = [];
+    hoveredPiece = null;
     render();
     return;
   }
@@ -284,6 +344,69 @@ function onSquareClick(row, col) {
   selectedSquare = { row, col };
   legalMoves = getLegalMoves(row, col, clickedPiece);
   render();
+}
+
+function buildSanNotation(piece, from, to, capturedPiece) {
+  const pieceType = piece[1];
+  const piecePrefix = PIECE_LETTER[pieceType];
+  const capture = Boolean(capturedPiece);
+  const dest = `${FILES[to.col]}${8 - to.row}`;
+
+  if (pieceType === "p") {
+    const pawnPrefix = capture ? FILES[from.col] : "";
+    return `${pawnPrefix}${capture ? "x" : ""}${dest}`;
+  }
+
+  return `${piecePrefix}${capture ? "x" : ""}${dest}`;
+}
+
+function recordMove(notation) {
+  if (historyPointer < moveHistory.length) {
+    moveHistory = moveHistory.slice(0, historyPointer);
+    historySnapshots = historySnapshots.slice(0, historyPointer + 1);
+  }
+
+  moveHistory.push(notation);
+  historySnapshots.push(cloneBoard(board));
+  historyPointer += 1;
+}
+
+function undoMove() {
+  if (historyPointer === 0) {
+    return;
+  }
+
+  historyPointer -= 1;
+  board = cloneBoard(historySnapshots[historyPointer]);
+  selectedSquare = null;
+  legalMoves = [];
+  hoveredPiece = null;
+  selectedPlaceSource = null;
+  render();
+}
+
+function redoMove() {
+  if (historyPointer >= moveHistory.length) {
+    return;
+  }
+
+  historyPointer += 1;
+  board = cloneBoard(historySnapshots[historyPointer]);
+  selectedSquare = null;
+  legalMoves = [];
+  hoveredPiece = null;
+  selectedPlaceSource = null;
+  render();
+}
+
+function resetHistoryFromCurrentBoard() {
+  historySnapshots = [cloneBoard(board)];
+  moveHistory = [];
+  historyPointer = 0;
+}
+
+function cloneBoard(sourceBoard) {
+  return sourceBoard.map((row) => [...row]);
 }
 
 function createInitialBoard() {
@@ -332,14 +455,8 @@ function getLegalMoves(row, col, piece) {
 
   if (type === "n") {
     const jumps = [
-      [2, 1],
-      [2, -1],
-      [-2, 1],
-      [-2, -1],
-      [1, 2],
-      [1, -2],
-      [-1, 2],
-      [-1, -2],
+      [2, 1], [2, -1], [-2, 1], [-2, -1],
+      [1, 2], [1, -2], [-1, 2], [-1, -2],
     ];
     jumps.forEach(([dr, dc]) => pushIfValidMove(row + dr, col + dc, color, moves));
     return moves;

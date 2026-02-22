@@ -115,6 +115,25 @@ select {
   cursor: pointer;
 }
 
+.piece {
+  z-index: 1;
+  line-height: 1;
+}
+
+.piece.white {
+  color: #f8fbff;
+  text-shadow:
+    -1px -1px 0 #4b5f73,
+    1px -1px 0 #4b5f73,
+    -1px 1px 0 #4b5f73,
+    1px 1px 0 #4b5f73;
+}
+
+.piece.black {
+  color: #1b2430;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
 .square.light {
   background: #fdfefe;
 }
@@ -126,6 +145,11 @@ select {
 .square.selected {
   outline: 3px solid #2f9cff;
   outline-offset: -3px;
+}
+
+
+.square.place-selected {
+  box-shadow: inset 0 0 0 999px rgba(128, 128, 128, 0.35);
 }
 
 .square.attack-line {
@@ -151,6 +175,18 @@ select {
 
 .square.capture-green::before {
   background: rgba(69, 214, 114, 0.33);
+}
+
+.square.hover-red {
+  background-image: linear-gradient(rgba(166, 20, 20, 0.5), rgba(166, 20, 20, 0.5));
+}
+
+.square.hover-green {
+  background-image: linear-gradient(rgba(26, 133, 54, 0.5), rgba(26, 133, 54, 0.5));
+}
+
+.square.capture-target-yellow {
+  background-image: linear-gradient(rgba(255, 223, 97, 0.64), rgba(255, 223, 97, 0.64));
 }
 
 .coord {

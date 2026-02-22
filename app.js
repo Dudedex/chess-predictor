@@ -28,7 +28,8 @@ let boardPerspective = "w";
 let selectedSquare = null;
 let legalMoves = [];
 let selectedPalettePiece = "wp";
-let isPaintingInPlaceMode = false;
+let selectedPlaceSource = null;
+let hoveredPiece = null;
 
 let board = createInitialBoard();
 
@@ -47,8 +48,12 @@ function wireEvents() {
     boardPerspective = boardSideSelect.value;
     render();
   });
-  document.addEventListener("mouseup", () => {
-    isPaintingInPlaceMode = false;
+  boardEl.addEventListener("mouseleave", () => {
+    if (!hoveredPiece) {
+      return;
+    }
+    hoveredPiece = null;
+    render();
   });
 }
 
@@ -58,6 +63,8 @@ function setMode(nextMode) {
   placeModeBtn.classList.toggle("active", mode === "place");
   piecePalette.disabled = mode !== "place";
   selectedSquare = null;
+  selectedPlaceSource = null;
+  hoveredPiece = null;
   legalMoves = [];
   render();
 }
@@ -109,6 +116,28 @@ function render() {
   const myCaptures = getCapturableSquares(mySide);
   const oppCaptures = getCapturableSquares(mySide === "w" ? "b" : "w");
   const attackedOccupiedSquares = getAttackedOccupiedSquares();
+  const hoveredAttacks = new Set();
+  if (hoveredPiece) {
+    const hovered = board[hoveredPiece.row][hoveredPiece.col];
+    if (hovered) {
+      getAttackSquaresForPiece(hoveredPiece.row, hoveredPiece.col, hovered).forEach((sq) =>
+        hoveredAttacks.add(key(sq.row, sq.col)),
+      );
+    }
+  }
+
+  const selectedWhiteCaptureTargets = new Set();
+  if (mode === "move" && selectedSquare) {
+    const selectedPiece = board[selectedSquare.row][selectedSquare.col];
+    if (selectedPiece && selectedPiece[0] === "w") {
+      legalMoves.forEach((move) => {
+        const target = board[move.row][move.col];
+        if (target && target[0] === "b") {
+          selectedWhiteCaptureTargets.add(key(move.row, move.col));
+        }
+      });
+    }
+  }
 
   for (let displayRow = 0; displayRow < 8; displayRow += 1) {
     for (let displayCol = 0; displayCol < 8; displayCol += 1) {
@@ -119,6 +148,9 @@ function render() {
       if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
         square.classList.add("selected");
       }
+      if (mode === "place" && selectedPlaceSource && selectedPlaceSource.row === row && selectedPlaceSource.col === col) {
+        square.classList.add("place-selected");
+      }
       if (legalMoves.some((m) => m.row === row && m.col === col)) {
         square.classList.add("legal");
       }
@@ -128,53 +160,60 @@ function render() {
       if (oppCaptures.has(key(row, col))) {
         square.classList.add("capture-red");
       }
+      if (hoveredPiece && hoveredAttacks.has(key(row, col))) {
+        square.classList.add(hoveredPiece.color === mySide ? "hover-green" : "hover-red");
+      }
+      if (selectedWhiteCaptureTargets.has(key(row, col))) {
+        square.classList.add("capture-target-yellow");
+      }
       if (attackedOccupiedSquares.has(key(row, col))) {
         square.classList.add("attack-line");
       }
 
       const piece = board[row][col];
-      square.textContent = piece ? PIECE_UNICODE[piece] : "";
+      if (piece) {
+        const pieceEl = document.createElement("span");
+        pieceEl.className = `piece ${piece[0] === "w" ? "white" : "black"}`;
+        pieceEl.textContent = PIECE_UNICODE[piece];
+        square.append(pieceEl);
+      }
       const coord = document.createElement("span");
       coord.className = "coord";
       coord.textContent = `${FILES[col]}${8 - row}`;
       square.append(coord);
       square.addEventListener("click", () => onSquareClick(row, col));
-      square.addEventListener("mousedown", (event) => onSquareMouseDown(event, row, col));
-      square.addEventListener("mouseenter", (event) => onSquareMouseEnter(event, row, col));
+      square.addEventListener("mouseenter", () => onSquareMouseEnter(row, col));
       square.addEventListener("contextmenu", (event) => onSquareRightClick(event, row, col));
-      square.addEventListener("dragstart", (event) => event.preventDefault());
       boardEl.append(square);
     }
   }
 }
 
 
-function onSquareMouseDown(event, row, col) {
-  if (mode !== "place" || event.button !== 0) {
+
+function onSquareMouseEnter(row, col) {
+  const piece = board[row][col];
+  if (!piece) {
+    if (hoveredPiece) {
+      hoveredPiece = null;
+      render();
+    }
     return;
   }
 
-  event.preventDefault();
-  isPaintingInPlaceMode = true;
-  applyPalettePiece(row, col);
-}
-
-function onSquareMouseEnter(event, row, col) {
-  if (mode !== "place" || !isPaintingInPlaceMode) {
+  if (hoveredPiece && hoveredPiece.row === row && hoveredPiece.col === col) {
     return;
   }
 
-  if ((event.buttons & 1) !== 1) {
-    isPaintingInPlaceMode = false;
-    return;
-  }
-
-  applyPalettePiece(row, col);
+  hoveredPiece = { row, col, color: piece[0] };
+  render();
 }
 
 function applyPalettePiece(row, col) {
   board[row][col] = selectedPalettePiece || "";
+  hoveredPiece = null;
   selectedSquare = null;
+  selectedPlaceSource = null;
   legalMoves = [];
   render();
 }
@@ -185,13 +224,41 @@ function onSquareRightClick(event, row, col) {
     return;
   }
   board[row][col] = "";
+  hoveredPiece = null;
   selectedSquare = null;
+  selectedPlaceSource = null;
   legalMoves = [];
   render();
 }
 
 function onSquareClick(row, col) {
   if (mode === "place") {
+    if (selectedPlaceSource) {
+      if (selectedPlaceSource.row === row && selectedPlaceSource.col === col) {
+        selectedPlaceSource = null;
+        render();
+        return;
+      }
+
+      board[row][col] = board[selectedPlaceSource.row][selectedPlaceSource.col];
+      board[selectedPlaceSource.row][selectedPlaceSource.col] = "";
+      selectedPlaceSource = null;
+      hoveredPiece = null;
+      selectedSquare = null;
+      legalMoves = [];
+      render();
+      return;
+    }
+
+    if (board[row][col]) {
+      selectedPlaceSource = { row, col };
+      hoveredPiece = null;
+      selectedSquare = null;
+      legalMoves = [];
+      render();
+      return;
+    }
+
     applyPalettePiece(row, col);
     return;
   }

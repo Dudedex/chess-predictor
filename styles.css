@@ -99,32 +99,13 @@ select {
   outline: 2px solid #1f6feb;
 }
 
-
-.upload-block {
-  display: grid;
-  gap: 0.45rem;
+#clearBoardBtn {
   margin-bottom: 1rem;
-}
-
-.upload-block label {
-  font-size: 0.9rem;
-  color: #495269;
-}
-
-.upload-block input {
-  font-size: 0.86rem;
-}
-
-.upload-block button {
   width: 100%;
 }
 
 
-.hint {
-  font-size: 0.9rem;
-  color: #555e73;
-  line-height: 1.45;
-}
+
 
 .board-wrap {
   display: grid;

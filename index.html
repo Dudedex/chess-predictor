@@ -47,19 +47,7 @@
           </div>
         </fieldset>
 
-
-
-        <div class="upload-block">
-          <label for="boardImageInput">Upload board image (experimental parser)</label>
-          <input id="boardImageInput" type="file" accept="image/*" />
-          <button id="parseBoardBtn" type="button">Parse image to board</button>
-        </div>
-
-        <p class="hint">
-          Move mode: white/black alternate turns. If a king is in check with no legal move, checkmate is shown.<br />
-          Place mode: click a piece on the board to select it (grey), then click destination to place it.<br />
-          Or click empty squares to place your currently selected palette piece. Right-click removes a piece.
-        </p>
+        <button id="clearBoardBtn" type="button" disabled>Clear board</button>
       </section>
 
       <section class="board-wrap">
@@ -73,6 +61,7 @@
           <button id="undoBtn" type="button">Undo</button>
           <button id="redoBtn" type="button">Forward</button>
           <button id="resetBoardBtn" type="button">Reset</button>
+          <button id="switchTurnBtn" type="button">Switch turn</button>
         </div>
         <ol id="historyList" class="history-list"></ol>
       </aside>

@@ -210,15 +210,20 @@ select {
   font-weight: 600;
 }
 
+.status-text {
+  margin: 0 0 0.7rem;
+  font-weight: 600;
+  color: #34405a;
+}
+
 .history-controls {
+
   display: flex;
   gap: 0.45rem;
   margin-bottom: 0.8rem;
 }
 
-.history-controls button {
-  flex: 1;
-}
+
 
 .history-list {
   margin: 0;

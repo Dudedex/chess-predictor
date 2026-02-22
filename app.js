@@ -13,15 +13,7 @@ const PIECE_UNICODE = {
   bp: "♟",
 };
 
-const PIECE_LETTER = {
-  p: "",
-  n: "N",
-  b: "B",
-  r: "R",
-  q: "Q",
-  k: "K",
-};
-
+const PIECE_LETTER = { p: "", n: "N", b: "B", r: "R", q: "Q", k: "K" };
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
 const boardEl = document.getElementById("board");
@@ -35,7 +27,9 @@ const blackPaletteEl = document.getElementById("blackPalette");
 const toolPaletteEl = document.getElementById("toolPalette");
 const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
+const resetBoardBtn = document.getElementById("resetBoardBtn");
 const historyListEl = document.getElementById("historyList");
+const statusTextEl = document.getElementById("statusText");
 
 let mode = "move";
 let mySide = "w";
@@ -45,14 +39,17 @@ let legalMoves = [];
 let selectedPalettePiece = "wp";
 let selectedPlaceSource = null;
 let hoveredPiece = null;
+let currentTurn = "w";
+let gameStateLabel = "";
 
 let board = createInitialBoard();
-let historySnapshots = [cloneBoard(board)];
+let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
 let moveHistory = [];
 let historyPointer = 0;
 
 initPalette();
 wireEvents();
+updateGameStateLabel();
 render();
 
 function wireEvents() {
@@ -75,6 +72,7 @@ function wireEvents() {
   });
   undoBtn.addEventListener("click", undoMove);
   redoBtn.addEventListener("click", redoMove);
+  resetBoardBtn.addEventListener("click", resetBoard);
 }
 
 function setMode(nextMode) {
@@ -90,11 +88,8 @@ function setMode(nextMode) {
 }
 
 function initPalette() {
-  const whitePieces = ["wk", "wq", "wr", "wb", "wn", "wp"];
-  const blackPieces = ["bk", "bq", "br", "bb", "bn", "bp"];
-
-  whitePieces.forEach((piece) => whitePaletteEl.append(createPaletteButton(piece)));
-  blackPieces.forEach((piece) => blackPaletteEl.append(createPaletteButton(piece)));
+  ["wk", "wq", "wr", "wb", "wn", "wp"].forEach((piece) => whitePaletteEl.append(createPaletteButton(piece)));
+  ["bk", "bq", "br", "bb", "bn", "bp"].forEach((piece) => blackPaletteEl.append(createPaletteButton(piece)));
 
   const clearButton = document.createElement("button");
   clearButton.type = "button";
@@ -127,9 +122,9 @@ function updateSelectedPaletteButton(activeButton) {
 
 function render() {
   boardEl.innerHTML = "";
-  const myCaptures = getCapturableSquares(mySide);
-  const oppCaptures = getCapturableSquares(mySide === "w" ? "b" : "w");
-  const attackedOccupiedSquares = getAttackedOccupiedSquares();
+  const myCaptures = getCapturableSquares(mySide, board);
+  const oppCaptures = getCapturableSquares(mySide === "w" ? "b" : "w", board);
+  const attackedOccupiedSquares = getAttackedOccupiedSquares(board);
   const hoveredAttacks = getHoveredAttacks();
 
   const selectedWhiteCaptureTargets = new Set();
@@ -188,6 +183,7 @@ function render() {
       coord.className = "coord";
       coord.textContent = `${FILES[col]}${8 - row}`;
       square.append(coord);
+
       square.addEventListener("click", () => onSquareClick(row, col));
       square.addEventListener("mouseenter", () => onSquareMouseEnter(row, col));
       square.addEventListener("contextmenu", (event) => onSquareRightClick(event, row, col));
@@ -196,31 +192,26 @@ function render() {
   }
 
   renderHistory();
+  statusTextEl.textContent = gameStateLabel || `Turn: ${currentTurn === "w" ? "White" : "Black"}`;
   undoBtn.disabled = historyPointer === 0;
   redoBtn.disabled = historyPointer >= moveHistory.length;
 }
 
 function renderHistory() {
   historyListEl.innerHTML = "";
-
   for (let fullMove = 0; fullMove * 2 < moveHistory.length; fullMove += 1) {
     const whiteIdx = fullMove * 2;
     const blackIdx = whiteIdx + 1;
     const li = document.createElement("li");
-
     const white = formatMoveForHistory(moveHistory[whiteIdx], whiteIdx + 1);
     const black = moveHistory[blackIdx] ? formatMoveForHistory(moveHistory[blackIdx], blackIdx + 1) : "";
     li.textContent = `${fullMove + 1}. ${white}${black ? ` ${black}` : ""}`;
-
     historyListEl.append(li);
   }
 }
 
 function formatMoveForHistory(notation, plyNumber) {
-  if (plyNumber <= historyPointer) {
-    return notation;
-  }
-  return `(${notation})`;
+  return plyNumber <= historyPointer ? notation : `(${notation})`;
 }
 
 function getHoveredAttacks() {
@@ -228,16 +219,13 @@ function getHoveredAttacks() {
   if (!hoveredPiece) {
     return hoveredAttacks;
   }
-
   const hovered = board[hoveredPiece.row][hoveredPiece.col];
   if (!hovered) {
     return hoveredAttacks;
   }
-
-  getAttackSquaresForPiece(hoveredPiece.row, hoveredPiece.col, hovered).forEach((sq) => {
+  getAttackSquaresForPiece(hoveredPiece.row, hoveredPiece.col, hovered, board).forEach((sq) => {
     hoveredAttacks.add(key(sq.row, sq.col));
   });
-
   return hoveredAttacks;
 }
 
@@ -250,21 +238,16 @@ function onSquareMouseEnter(row, col) {
     }
     return;
   }
-
   if (hoveredPiece && hoveredPiece.row === row && hoveredPiece.col === col) {
     return;
   }
-
   hoveredPiece = { row, col, color: piece[0] };
   render();
 }
 
 function applyPalettePiece(row, col) {
   board[row][col] = selectedPalettePiece || "";
-  hoveredPiece = null;
-  selectedSquare = null;
-  selectedPlaceSource = null;
-  legalMoves = [];
+  clearSelections();
   resetHistoryFromCurrentBoard();
   render();
 }
@@ -275,66 +258,29 @@ function onSquareRightClick(event, row, col) {
     return;
   }
   board[row][col] = "";
-  hoveredPiece = null;
-  selectedSquare = null;
-  selectedPlaceSource = null;
-  legalMoves = [];
+  clearSelections();
   resetHistoryFromCurrentBoard();
   render();
 }
 
 function onSquareClick(row, col) {
   if (mode === "place") {
-    if (selectedPlaceSource) {
-      if (selectedPlaceSource.row === row && selectedPlaceSource.col === col) {
-        selectedPlaceSource = null;
-        render();
-        return;
-      }
+    handlePlaceModeClick(row, col);
+    return;
+  }
 
-      board[row][col] = board[selectedPlaceSource.row][selectedPlaceSource.col];
-      board[selectedPlaceSource.row][selectedPlaceSource.col] = "";
-      selectedPlaceSource = null;
-      hoveredPiece = null;
-      selectedSquare = null;
-      legalMoves = [];
-      resetHistoryFromCurrentBoard();
-      render();
-      return;
-    }
-
-    if (board[row][col]) {
-      selectedPlaceSource = { row, col };
-      hoveredPiece = null;
-      selectedSquare = null;
-      legalMoves = [];
-      render();
-      return;
-    }
-
-    applyPalettePiece(row, col);
+  if (gameStateLabel.includes("Checkmate")) {
     return;
   }
 
   const clickedPiece = board[row][col];
 
   if (selectedSquare && legalMoves.some((move) => move.row === row && move.col === col)) {
-    const movingPiece = board[selectedSquare.row][selectedSquare.col];
-    const capturedPiece = board[row][col];
-
-    board[row][col] = movingPiece;
-    board[selectedSquare.row][selectedSquare.col] = "";
-
-    recordMove(buildSanNotation(movingPiece, selectedSquare, { row, col }, capturedPiece));
-
-    selectedSquare = null;
-    legalMoves = [];
-    hoveredPiece = null;
-    render();
+    executeMove(selectedSquare, { row, col });
     return;
   }
 
-  if (!clickedPiece) {
+  if (!clickedPiece || clickedPiece[0] !== currentTurn) {
     selectedSquare = null;
     legalMoves = [];
     render();
@@ -342,7 +288,56 @@ function onSquareClick(row, col) {
   }
 
   selectedSquare = { row, col };
-  legalMoves = getLegalMoves(row, col, clickedPiece);
+  legalMoves = getLegalMoves(row, col, clickedPiece, board);
+  render();
+}
+
+function handlePlaceModeClick(row, col) {
+  if (selectedPlaceSource) {
+    if (selectedPlaceSource.row === row && selectedPlaceSource.col === col) {
+      selectedPlaceSource = null;
+      render();
+      return;
+    }
+    board[row][col] = board[selectedPlaceSource.row][selectedPlaceSource.col];
+    board[selectedPlaceSource.row][selectedPlaceSource.col] = "";
+    clearSelections();
+    resetHistoryFromCurrentBoard();
+    render();
+    return;
+  }
+
+  if (board[row][col]) {
+    selectedPlaceSource = { row, col };
+    selectedSquare = null;
+    legalMoves = [];
+    hoveredPiece = null;
+    render();
+    return;
+  }
+
+  applyPalettePiece(row, col);
+}
+
+function executeMove(from, to) {
+  const movingPiece = board[from.row][from.col];
+  const capturedPiece = board[to.row][to.col];
+
+  board[to.row][to.col] = movingPiece;
+  board[from.row][from.col] = "";
+
+  currentTurn = currentTurn === "w" ? "b" : "w";
+  updateGameStateLabel();
+
+  let notation = buildSanNotation(movingPiece, from, to, capturedPiece);
+  if (gameStateLabel.includes("Checkmate")) {
+    notation += "#";
+  } else if (gameStateLabel.includes("Check:")) {
+    notation += "+";
+  }
+
+  recordMove(notation);
+  clearSelections();
   render();
 }
 
@@ -360,6 +355,73 @@ function buildSanNotation(piece, from, to, capturedPiece) {
   return `${piecePrefix}${capture ? "x" : ""}${dest}`;
 }
 
+function updateGameStateLabel() {
+  const inCheck = isKingInCheck(currentTurn, board);
+  const hasMoves = hasAnyLegalMove(currentTurn, board);
+
+  if (inCheck && !hasMoves) {
+    gameStateLabel = `Checkmate: ${currentTurn === "w" ? "Black" : "White"} wins`;
+    return;
+  }
+  if (inCheck) {
+    gameStateLabel = `Check: ${currentTurn === "w" ? "White" : "Black"} king under attack`;
+    return;
+  }
+  gameStateLabel = `Turn: ${currentTurn === "w" ? "White" : "Black"}`;
+}
+
+function hasAnyLegalMove(color, boardState) {
+  for (let row = 0; row < 8; row += 1) {
+    for (let col = 0; col < 8; col += 1) {
+      const piece = boardState[row][col];
+      if (!piece || piece[0] !== color) {
+        continue;
+      }
+      if (getLegalMoves(row, col, piece, boardState).length > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function isKingInCheck(color, boardState) {
+  const kingPos = findKing(color, boardState);
+  if (!kingPos) {
+    return false;
+  }
+  const enemy = color === "w" ? "b" : "w";
+  return isSquareAttacked(kingPos.row, kingPos.col, enemy, boardState);
+}
+
+function findKing(color, boardState) {
+  const target = `${color}k`;
+  for (let row = 0; row < 8; row += 1) {
+    for (let col = 0; col < 8; col += 1) {
+      if (boardState[row][col] === target) {
+        return { row, col };
+      }
+    }
+  }
+  return null;
+}
+
+function isSquareAttacked(row, col, byColor, boardState) {
+  for (let r = 0; r < 8; r += 1) {
+    for (let c = 0; c < 8; c += 1) {
+      const piece = boardState[r][c];
+      if (!piece || piece[0] !== byColor) {
+        continue;
+      }
+      const attacks = getAttackSquaresForPiece(r, c, piece, boardState);
+      if (attacks.some((sq) => sq.row === row && sq.col === col)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function recordMove(notation) {
   if (historyPointer < moveHistory.length) {
     moveHistory = moveHistory.slice(0, historyPointer);
@@ -367,7 +429,7 @@ function recordMove(notation) {
   }
 
   moveHistory.push(notation);
-  historySnapshots.push(cloneBoard(board));
+  historySnapshots.push({ board: cloneBoard(board), turn: currentTurn });
   historyPointer += 1;
 }
 
@@ -375,13 +437,11 @@ function undoMove() {
   if (historyPointer === 0) {
     return;
   }
-
   historyPointer -= 1;
-  board = cloneBoard(historySnapshots[historyPointer]);
-  selectedSquare = null;
-  legalMoves = [];
-  hoveredPiece = null;
-  selectedPlaceSource = null;
+  board = cloneBoard(historySnapshots[historyPointer].board);
+  currentTurn = historySnapshots[historyPointer].turn;
+  clearSelections();
+  updateGameStateLabel();
   render();
 }
 
@@ -389,20 +449,34 @@ function redoMove() {
   if (historyPointer >= moveHistory.length) {
     return;
   }
-
   historyPointer += 1;
-  board = cloneBoard(historySnapshots[historyPointer]);
-  selectedSquare = null;
-  legalMoves = [];
-  hoveredPiece = null;
-  selectedPlaceSource = null;
+  board = cloneBoard(historySnapshots[historyPointer].board);
+  currentTurn = historySnapshots[historyPointer].turn;
+  clearSelections();
+  updateGameStateLabel();
+  render();
+}
+
+function resetBoard() {
+  board = createInitialBoard();
+  currentTurn = "w";
+  clearSelections();
+  resetHistoryFromCurrentBoard();
+  updateGameStateLabel();
   render();
 }
 
 function resetHistoryFromCurrentBoard() {
-  historySnapshots = [cloneBoard(board)];
+  historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
   moveHistory = [];
   historyPointer = 0;
+}
+
+function clearSelections() {
+  hoveredPiece = null;
+  selectedSquare = null;
+  selectedPlaceSource = null;
+  legalMoves = [];
 }
 
 function cloneBoard(sourceBoard) {
@@ -422,7 +496,19 @@ function createInitialBoard() {
   ];
 }
 
-function getLegalMoves(row, col, piece) {
+function getLegalMoves(row, col, piece, boardState) {
+  const pseudoMoves = getPseudoLegalMoves(row, col, piece, boardState);
+  const color = piece[0];
+
+  return pseudoMoves.filter((move) => {
+    const nextBoard = cloneBoard(boardState);
+    nextBoard[move.row][move.col] = nextBoard[row][col];
+    nextBoard[row][col] = "";
+    return !isKingInCheck(color, nextBoard);
+  });
+}
+
+function getPseudoLegalMoves(row, col, piece, boardState) {
   const color = piece[0];
   const type = piece[1];
   const moves = [];
@@ -431,9 +517,9 @@ function getLegalMoves(row, col, piece) {
     const dir = color === "w" ? -1 : 1;
     const startRow = color === "w" ? 6 : 1;
 
-    if (isInBounds(row + dir, col) && !board[row + dir][col]) {
+    if (isInBounds(row + dir, col) && !boardState[row + dir][col]) {
       moves.push({ row: row + dir, col });
-      if (row === startRow && !board[row + 2 * dir][col]) {
+      if (row === startRow && !boardState[row + 2 * dir][col]) {
         moves.push({ row: row + 2 * dir, col });
       }
     }
@@ -444,7 +530,7 @@ function getLegalMoves(row, col, piece) {
       if (!isInBounds(nr, nc)) {
         return;
       }
-      const target = board[nr][nc];
+      const target = boardState[nr][nc];
       if (target && target[0] !== color) {
         moves.push({ row: nr, col: nc });
       }
@@ -454,11 +540,9 @@ function getLegalMoves(row, col, piece) {
   }
 
   if (type === "n") {
-    const jumps = [
-      [2, 1], [2, -1], [-2, 1], [-2, -1],
-      [1, 2], [1, -2], [-1, 2], [-1, -2],
-    ];
-    jumps.forEach(([dr, dc]) => pushIfValidMove(row + dr, col + dc, color, moves));
+    [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]].forEach(([dr, dc]) => {
+      pushIfValidMove(row + dr, col + dc, color, moves, boardState);
+    });
     return moves;
   }
 
@@ -468,7 +552,7 @@ function getLegalMoves(row, col, piece) {
         if (!dr && !dc) {
           continue;
         }
-        pushIfValidMove(row + dr, col + dc, color, moves);
+        pushIfValidMove(row + dr, col + dc, color, moves, boardState);
       }
     }
     return moves;
@@ -485,9 +569,8 @@ function getLegalMoves(row, col, piece) {
   directions.forEach(([dr, dc]) => {
     let nr = row + dr;
     let nc = col + dc;
-
     while (isInBounds(nr, nc)) {
-      const target = board[nr][nc];
+      const target = boardState[nr][nc];
       if (!target) {
         moves.push({ row: nr, col: nc });
       } else {
@@ -504,30 +587,28 @@ function getLegalMoves(row, col, piece) {
   return moves;
 }
 
-function getCapturableSquares(color) {
+function getCapturableSquares(color, boardState) {
   const captureSquares = new Set();
-
   for (let row = 0; row < 8; row += 1) {
     for (let col = 0; col < 8; col += 1) {
-      const piece = board[row][col];
+      const piece = boardState[row][col];
       if (!piece || piece[0] !== color) {
         continue;
       }
-      getAttackSquaresForPiece(row, col, piece).forEach((sq) => captureSquares.add(key(sq.row, sq.col)));
+      getAttackSquaresForPiece(row, col, piece, boardState).forEach((sq) => captureSquares.add(key(sq.row, sq.col)));
     }
   }
-
   return captureSquares;
 }
 
-function getAttackedOccupiedSquares() {
+function getAttackedOccupiedSquares(boardState) {
   const attacked = new Set();
-  const whiteAttacks = getCapturableSquares("w");
-  const blackAttacks = getCapturableSquares("b");
+  const whiteAttacks = getCapturableSquares("w", boardState);
+  const blackAttacks = getCapturableSquares("b", boardState);
 
   for (let row = 0; row < 8; row += 1) {
     for (let col = 0; col < 8; col += 1) {
-      const piece = board[row][col];
+      const piece = boardState[row][col];
       if (!piece) {
         continue;
       }
@@ -537,11 +618,10 @@ function getAttackedOccupiedSquares() {
       }
     }
   }
-
   return attacked;
 }
 
-function getAttackSquaresForPiece(row, col, piece) {
+function getAttackSquaresForPiece(row, col, piece, boardState) {
   const color = piece[0];
   const type = piece[1];
   const attacks = [];
@@ -595,7 +675,7 @@ function getAttackSquaresForPiece(row, col, piece) {
 
     while (isInBounds(nr, nc)) {
       attacks.push({ row: nr, col: nc });
-      if (board[nr][nc]) {
+      if (boardState[nr][nc]) {
         break;
       }
       nr += dr;
@@ -606,11 +686,11 @@ function getAttackSquaresForPiece(row, col, piece) {
   return attacks;
 }
 
-function pushIfValidMove(row, col, color, collection) {
+function pushIfValidMove(row, col, color, collection, boardState) {
   if (!isInBounds(row, col)) {
     return;
   }
-  const target = board[row][col];
+  const target = boardState[row][col];
   if (!target || target[0] !== color) {
     collection.push({ row, col });
   }

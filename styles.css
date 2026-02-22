@@ -21,6 +21,7 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   padding: 1.25rem;
+  align-items: start;
 }
 
 .controls,
@@ -98,6 +99,27 @@ select {
   outline: 2px solid #1f6feb;
 }
 
+
+.upload-block {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.upload-block label {
+  font-size: 0.9rem;
+  color: #495269;
+}
+
+.upload-block input {
+  font-size: 0.86rem;
+}
+
+.upload-block button {
+  width: 100%;
+}
+
+
 .hint {
   font-size: 0.9rem;
   color: #555e73;
@@ -106,7 +128,8 @@ select {
 
 .board-wrap {
   display: grid;
-  place-items: center;
+  justify-items: center;
+  align-items: start;
 }
 
 .board {

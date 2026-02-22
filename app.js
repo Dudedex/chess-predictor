@@ -30,6 +30,8 @@ const redoBtn = document.getElementById("redoBtn");
 const resetBoardBtn = document.getElementById("resetBoardBtn");
 const historyListEl = document.getElementById("historyList");
 const statusTextEl = document.getElementById("statusText");
+const boardImageInput = document.getElementById("boardImageInput");
+const parseBoardBtn = document.getElementById("parseBoardBtn");
 
 let mode = "move";
 let mySide = "w";
@@ -73,6 +75,7 @@ function wireEvents() {
   undoBtn.addEventListener("click", undoMove);
   redoBtn.addEventListener("click", redoMove);
   resetBoardBtn.addEventListener("click", resetBoard);
+  parseBoardBtn.addEventListener("click", parseUploadedBoardImage);
 }
 
 function setMode(nextMode) {
@@ -477,6 +480,123 @@ function clearSelections() {
   selectedSquare = null;
   selectedPlaceSource = null;
   legalMoves = [];
+}
+
+
+
+async function parseUploadedBoardImage() {
+  const file = boardImageInput.files?.[0];
+  if (!file) {
+    statusTextEl.textContent = "Please choose an image first.";
+    return;
+  }
+
+  try {
+    const imageBitmap = await createImageBitmap(file);
+    const parsed = parseBoardFromImageBitmap(imageBitmap);
+    board = parsed.board;
+    currentTurn = "w";
+    clearSelections();
+    resetHistoryFromCurrentBoard();
+    updateGameStateLabel();
+    statusTextEl.textContent = `Image parsed (experimental), confidence ${Math.round(parsed.confidence)}%`;
+    render();
+  } catch (error) {
+    statusTextEl.textContent = "Could not parse image. Try a clearer top-down board image.";
+  }
+}
+
+function parseBoardFromImageBitmap(imageBitmap) {
+  const size = Math.min(imageBitmap.width, imageBitmap.height);
+  const offsetX = Math.floor((imageBitmap.width - size) / 2);
+  const offsetY = Math.floor((imageBitmap.height - size) / 2);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 800;
+  canvas.height = 800;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(imageBitmap, offsetX, offsetY, size, size, 0, 0, 800, 800);
+
+  const templates = buildPieceTemplates();
+  const parsedBoard = Array.from({ length: 8 }, () => Array(8).fill(""));
+  let totalScore = 0;
+
+  for (let row = 0; row < 8; row += 1) {
+    for (let col = 0; col < 8; col += 1) {
+      const imageData = ctx.getImageData(col * 100, row * 100, 100, 100);
+      const result = matchCellToTemplate(imageData, templates, (row + col) % 2 ? "dark" : "light");
+      parsedBoard[row][col] = result.piece;
+      totalScore += result.score;
+    }
+  }
+
+  const confidence = Math.max(0, 100 - totalScore / 64 / 120);
+  return { board: parsedBoard, confidence };
+}
+
+function buildPieceTemplates() {
+  const templates = [];
+  const pieceCodes = ["", ...Object.keys(PIECE_UNICODE)];
+
+  ["light", "dark"].forEach((squareTone) => {
+    pieceCodes.forEach((pieceCode) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 100;
+      canvas.height = 100;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = squareTone === "light" ? "#fdfefe" : "#c9e8ff";
+      ctx.fillRect(0, 0, 100, 100);
+
+      if (pieceCode) {
+        ctx.font = '74px "Segoe UI Symbol", "Noto Sans Symbols", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        if (pieceCode[0] === "w") {
+          ctx.fillStyle = "#f8fbff";
+          ctx.strokeStyle = "#4b5f73";
+          ctx.lineWidth = 2;
+          ctx.strokeText(PIECE_UNICODE[pieceCode], 50, 53);
+        } else {
+          ctx.fillStyle = "#1b2430";
+        }
+        ctx.fillText(PIECE_UNICODE[pieceCode], 50, 53);
+      }
+
+      templates.push({
+        tone: squareTone,
+        piece: pieceCode,
+        data: ctx.getImageData(0, 0, 100, 100).data,
+      });
+    });
+  });
+
+  return templates;
+}
+
+function matchCellToTemplate(cellImageData, templates, tone) {
+  const data = cellImageData.data;
+  let best = { piece: "", score: Number.POSITIVE_INFINITY };
+
+  for (let i = 0; i < templates.length; i += 1) {
+    const template = templates[i];
+    if (template.tone !== tone) {
+      continue;
+    }
+
+    let diff = 0;
+    for (let p = 0; p < data.length; p += 16) {
+      const dr = data[p] - template.data[p];
+      const dg = data[p + 1] - template.data[p + 1];
+      const db = data[p + 2] - template.data[p + 2];
+      diff += Math.abs(dr) + Math.abs(dg) + Math.abs(db);
+    }
+
+    if (diff < best.score) {
+      best = { piece: template.piece, score: diff };
+    }
+  }
+
+  return best;
 }
 
 function cloneBoard(sourceBoard) {

@@ -19,13 +19,16 @@ const boardEl = document.getElementById("board");
 const moveModeBtn = document.getElementById("moveModeBtn");
 const placeModeBtn = document.getElementById("placeModeBtn");
 const mySideSelect = document.getElementById("mySideSelect");
+const boardSideSelect = document.getElementById("boardSideSelect");
 const piecePalette = document.getElementById("piecePalette");
 
 let mode = "move";
 let mySide = "w";
+let boardPerspective = "w";
 let selectedSquare = null;
 let legalMoves = [];
 let selectedPalettePiece = "wp";
+let isPaintingInPlaceMode = false;
 
 let board = createInitialBoard();
 
@@ -39,6 +42,13 @@ function wireEvents() {
   mySideSelect.addEventListener("change", () => {
     mySide = mySideSelect.value;
     render();
+  });
+  boardSideSelect.addEventListener("change", () => {
+    boardPerspective = boardSideSelect.value;
+    render();
+  });
+  document.addEventListener("mouseup", () => {
+    isPaintingInPlaceMode = false;
   });
 }
 
@@ -76,9 +86,7 @@ function initPalette() {
     button.classList.toggle("selected", piece === selectedPalettePiece);
     button.addEventListener("click", () => {
       selectedPalettePiece = piece;
-      [...piecePalette.querySelectorAll("button")].forEach((btn) =>
-        btn.classList.remove("selected"),
-      );
+      [...piecePalette.querySelectorAll("button")].forEach((btn) => btn.classList.remove("selected"));
       button.classList.add("selected");
     });
     piecePalette.append(button);
@@ -90,9 +98,7 @@ function initPalette() {
   clearButton.title = "Clear square";
   clearButton.addEventListener("click", () => {
     selectedPalettePiece = "";
-    [...piecePalette.querySelectorAll("button")].forEach((btn) =>
-      btn.classList.remove("selected"),
-    );
+    [...piecePalette.querySelectorAll("button")].forEach((btn) => btn.classList.remove("selected"));
     clearButton.classList.add("selected");
   });
   piecePalette.append(clearButton);
@@ -102,11 +108,13 @@ function render() {
   boardEl.innerHTML = "";
   const myCaptures = getCapturableSquares(mySide);
   const oppCaptures = getCapturableSquares(mySide === "w" ? "b" : "w");
+  const attackedOccupiedSquares = getAttackedOccupiedSquares();
 
-  for (let row = 0; row < 8; row += 1) {
-    for (let col = 0; col < 8; col += 1) {
+  for (let displayRow = 0; displayRow < 8; displayRow += 1) {
+    for (let displayCol = 0; displayCol < 8; displayCol += 1) {
+      const { row, col } = toBoardCoords(displayRow, displayCol);
       const square = document.createElement("div");
-      square.className = `square ${(row + col) % 2 ? "dark" : "light"}`;
+      square.className = `square ${(displayRow + displayCol) % 2 ? "dark" : "light"}`;
 
       if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
         square.classList.add("selected");
@@ -120,6 +128,9 @@ function render() {
       if (oppCaptures.has(key(row, col))) {
         square.classList.add("capture-red");
       }
+      if (attackedOccupiedSquares.has(key(row, col))) {
+        square.classList.add("attack-line");
+      }
 
       const piece = board[row][col];
       square.textContent = piece ? PIECE_UNICODE[piece] : "";
@@ -128,17 +139,60 @@ function render() {
       coord.textContent = `${FILES[col]}${8 - row}`;
       square.append(coord);
       square.addEventListener("click", () => onSquareClick(row, col));
+      square.addEventListener("mousedown", (event) => onSquareMouseDown(event, row, col));
+      square.addEventListener("mouseenter", (event) => onSquareMouseEnter(event, row, col));
+      square.addEventListener("contextmenu", (event) => onSquareRightClick(event, row, col));
+      square.addEventListener("dragstart", (event) => event.preventDefault());
       boardEl.append(square);
     }
   }
 }
 
+
+function onSquareMouseDown(event, row, col) {
+  if (mode !== "place" || event.button !== 0) {
+    return;
+  }
+
+  event.preventDefault();
+  isPaintingInPlaceMode = true;
+  applyPalettePiece(row, col);
+}
+
+function onSquareMouseEnter(event, row, col) {
+  if (mode !== "place" || !isPaintingInPlaceMode) {
+    return;
+  }
+
+  if ((event.buttons & 1) !== 1) {
+    isPaintingInPlaceMode = false;
+    return;
+  }
+
+  applyPalettePiece(row, col);
+}
+
+function applyPalettePiece(row, col) {
+  board[row][col] = selectedPalettePiece || "";
+  selectedSquare = null;
+  legalMoves = [];
+  render();
+}
+
+function onSquareRightClick(event, row, col) {
+  event.preventDefault();
+  if (!board[row][col]) {
+    return;
+  }
+  board[row][col] = "";
+  selectedSquare = null;
+  legalMoves = [];
+  render();
+}
+
 function onSquareClick(row, col) {
   if (mode === "place") {
-    board[row][col] = selectedPalettePiece || "";
-    selectedSquare = null;
-    legalMoves = [];
-    render();
+    applyPalettePiece(row, col);
     return;
   }
 
@@ -238,20 +292,10 @@ function getLegalMoves(row, col, piece) {
 
   const directions = [];
   if (["b", "q"].includes(type)) {
-    directions.push(
-      [1, 1],
-      [1, -1],
-      [-1, 1],
-      [-1, -1],
-    );
+    directions.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
   }
   if (["r", "q"].includes(type)) {
-    directions.push(
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    );
+    directions.push([1, 0], [-1, 0], [0, 1], [0, -1]);
   }
 
   directions.forEach(([dr, dc]) => {
@@ -292,6 +336,27 @@ function getCapturableSquares(color) {
   return captureSquares;
 }
 
+function getAttackedOccupiedSquares() {
+  const attacked = new Set();
+  const whiteAttacks = getCapturableSquares("w");
+  const blackAttacks = getCapturableSquares("b");
+
+  for (let row = 0; row < 8; row += 1) {
+    for (let col = 0; col < 8; col += 1) {
+      const piece = board[row][col];
+      if (!piece) {
+        continue;
+      }
+      const enemyAttacks = piece[0] === "w" ? blackAttacks : whiteAttacks;
+      if (enemyAttacks.has(key(row, col))) {
+        attacked.add(key(row, col));
+      }
+    }
+  }
+
+  return attacked;
+}
+
 function getAttackSquaresForPiece(row, col, piece) {
   const color = piece[0];
   const type = piece[1];
@@ -310,16 +375,7 @@ function getAttackSquaresForPiece(row, col, piece) {
   }
 
   if (type === "n") {
-    [
-      [2, 1],
-      [2, -1],
-      [-2, 1],
-      [-2, -1],
-      [1, 2],
-      [1, -2],
-      [-1, 2],
-      [-1, -2],
-    ].forEach(([dr, dc]) => {
+    [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]].forEach(([dr, dc]) => {
       if (isInBounds(row + dr, col + dc)) {
         attacks.push({ row: row + dr, col: col + dc });
       }
@@ -343,20 +399,10 @@ function getAttackSquaresForPiece(row, col, piece) {
 
   const directions = [];
   if (["b", "q"].includes(type)) {
-    directions.push(
-      [1, 1],
-      [1, -1],
-      [-1, 1],
-      [-1, -1],
-    );
+    directions.push([1, 1], [1, -1], [-1, 1], [-1, -1]);
   }
   if (["r", "q"].includes(type)) {
-    directions.push(
-      [1, 0],
-      [-1, 0],
-      [0, 1],
-      [0, -1],
-    );
+    directions.push([1, 0], [-1, 0], [0, 1], [0, -1]);
   }
 
   directions.forEach(([dr, dc]) => {
@@ -384,6 +430,13 @@ function pushIfValidMove(row, col, color, collection) {
   if (!target || target[0] !== color) {
     collection.push({ row, col });
   }
+}
+
+function toBoardCoords(displayRow, displayCol) {
+  if (boardPerspective === "b") {
+    return { row: 7 - displayRow, col: 7 - displayCol };
+  }
+  return { row: displayRow, col: displayCol };
 }
 
 function key(row, col) {

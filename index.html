@@ -23,13 +23,22 @@
           </select>
         </div>
 
+        <div class="side-toggle">
+          <label for="boardSideSelect">Board perspective</label>
+          <select id="boardSideSelect">
+            <option value="w">White at bottom</option>
+            <option value="b">Black at bottom</option>
+          </select>
+        </div>
+
         <fieldset id="piecePalette" class="palette" disabled>
           <legend>Place piece</legend>
         </fieldset>
 
         <p class="hint">
           Move mode: select a piece then click a highlighted legal destination.<br />
-          Place mode: pick a piece and click any square to place/replace it.
+          Place mode: pick a piece and click or drag with left mouse to paint pieces.<br />
+          Right-click any square to remove its piece.
         </p>
       </section>
 

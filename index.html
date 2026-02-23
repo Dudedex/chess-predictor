@@ -15,6 +15,8 @@
           <button id="placeModeBtn">Place mode</button>
         </div>
 
+        <button id="switchTurnBtn" type="button" class="top-action">Switch turn</button>
+
         <div class="side-toggle">
           <label for="mySideSelect">My side (green overlay)</label>
           <select id="mySideSelect">
@@ -47,22 +49,24 @@
           </div>
         </fieldset>
 
-        <button id="clearBoardBtn" type="button" disabled>Clear board</button>
+        <div id="placeActions" class="place-actions">
+          <button id="clearBoardBtn" type="button" disabled>Clear board</button>
+          <button id="resetBoardBtn" type="button" disabled>Reset</button>
+          <button id="flipHorizontalBtn" type="button" disabled>Flip ↔</button>
+        </div>
       </section>
 
       <section class="board-wrap">
         <div id="board" class="board" aria-label="Chess board"></div>
+        <div class="board-nav">
+          <button id="undoBtn" type="button">← Undo</button>
+          <button id="redoBtn" type="button">Forward →</button>
+        </div>
       </section>
 
       <aside class="history-panel">
         <h2>Move History</h2>
         <p id="statusText" class="status-text"></p>
-        <div class="history-controls">
-          <button id="undoBtn" type="button">Undo</button>
-          <button id="redoBtn" type="button">Forward</button>
-          <button id="resetBoardBtn" type="button">Reset</button>
-          <button id="switchTurnBtn" type="button">Switch turn</button>
-        </div>
         <ol id="historyList" class="history-list"></ol>
       </aside>
     </main>

@@ -1,18 +1,7 @@
 const PIECE_UNICODE = {
-  wk: "♔",
-  wq: "♕",
-  wr: "♖",
-  wb: "♗",
-  wn: "♘",
-  wp: "♙",
-  bk: "♚",
-  bq: "♛",
-  br: "♜",
-  bb: "♝",
-  bn: "♞",
-  bp: "♟",
+  wk: "♔", wq: "♕", wr: "♖", wb: "♗", wn: "♘", wp: "♙",
+  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
 };
-
 const PIECE_LETTER = { p: "", n: "N", b: "B", r: "R", q: "Q", k: "K" };
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 
@@ -29,9 +18,11 @@ const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const resetBoardBtn = document.getElementById("resetBoardBtn");
 const switchTurnBtn = document.getElementById("switchTurnBtn");
+const clearBoardBtn = document.getElementById("clearBoardBtn");
+const flipHorizontalBtn = document.getElementById("flipHorizontalBtn");
 const historyListEl = document.getElementById("historyList");
 const statusTextEl = document.getElementById("statusText");
-const clearBoardBtn = document.getElementById("clearBoardBtn");
+const placeActionsEl = document.getElementById("placeActions");
 
 let mode = "move";
 let mySide = "w";
@@ -49,10 +40,11 @@ let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
 let moveHistory = [];
 let historyPointer = 0;
 
+applyStateFromUrl();
 initPalette();
 wireEvents();
 updateGameStateLabel();
-render();
+setMode(mode);
 
 function wireEvents() {
   moveModeBtn.addEventListener("click", () => setMode("move"));
@@ -77,18 +69,22 @@ function wireEvents() {
   resetBoardBtn.addEventListener("click", resetBoard);
   switchTurnBtn.addEventListener("click", switchTurn);
   clearBoardBtn.addEventListener("click", clearBoard);
+  flipHorizontalBtn.addEventListener("click", flipBoardHorizontally);
 }
 
 function setMode(nextMode) {
   mode = nextMode;
   moveModeBtn.classList.toggle("active", mode === "move");
   placeModeBtn.classList.toggle("active", mode === "place");
-  piecePalette.disabled = mode !== "place";
-  clearBoardBtn.disabled = mode !== "place";
-  selectedSquare = null;
-  selectedPlaceSource = null;
-  hoveredPiece = null;
-  legalMoves = [];
+  const isPlace = mode === "place";
+  piecePalette.disabled = !isPlace;
+  clearBoardBtn.disabled = !isPlace;
+  resetBoardBtn.disabled = !isPlace;
+  flipHorizontalBtn.disabled = !isPlace;
+  piecePalette.classList.toggle("hidden", !isPlace);
+  placeActionsEl.classList.toggle("hidden", !isPlace);
+
+  clearSelections();
   render();
 }
 
@@ -200,6 +196,8 @@ function render() {
   statusTextEl.textContent = gameStateLabel || `Turn: ${currentTurn === "w" ? "White" : "Black"}`;
   undoBtn.disabled = historyPointer === 0;
   redoBtn.disabled = historyPointer >= moveHistory.length;
+
+  syncUrlState();
 }
 
 function renderHistory() {
@@ -462,8 +460,6 @@ function redoMove() {
   render();
 }
 
-
-
 function switchTurn() {
   currentTurn = currentTurn === "w" ? "b" : "w";
   clearSelections();
@@ -496,6 +492,14 @@ function resetBoard() {
   render();
 }
 
+function flipBoardHorizontally() {
+  board = board.map((row) => [...row].reverse());
+  clearSelections();
+  resetHistoryFromCurrentBoard();
+  updateGameStateLabel();
+  render();
+}
+
 function resetHistoryFromCurrentBoard() {
   historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
   moveHistory = [];
@@ -509,7 +513,71 @@ function clearSelections() {
   legalMoves = [];
 }
 
+function syncUrlState() {
+  const payload = {
+    board,
+    currentTurn,
+    moveHistory,
+    historyPointer,
+    historySnapshots,
+    mySide,
+    boardPerspective,
+    mode,
+  };
 
+  const encoded = encodeState(payload);
+  const nextUrl = `${window.location.pathname}?board=${encoded}`;
+  window.history.replaceState(null, "", nextUrl);
+}
+
+function applyStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const encoded = params.get("board");
+  if (!encoded) {
+    return;
+  }
+
+  try {
+    const parsed = decodeState(encoded);
+    if (!Array.isArray(parsed.board) || parsed.board.length !== 8) {
+      return;
+    }
+
+    board = parsed.board.map((row) => (Array.isArray(row) ? row.slice(0, 8) : Array(8).fill("")));
+    currentTurn = parsed.currentTurn === "b" ? "b" : "w";
+    moveHistory = Array.isArray(parsed.moveHistory) ? parsed.moveHistory.slice() : [];
+    historyPointer = Number.isInteger(parsed.historyPointer) ? parsed.historyPointer : moveHistory.length;
+
+    if (Array.isArray(parsed.historySnapshots) && parsed.historySnapshots.length) {
+      historySnapshots = parsed.historySnapshots.map((snap) => ({
+        board: cloneBoard(snap.board),
+        turn: snap.turn === "b" ? "b" : "w",
+      }));
+    } else {
+      historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
+      moveHistory = [];
+      historyPointer = 0;
+    }
+
+    historyPointer = Math.max(0, Math.min(historyPointer, moveHistory.length));
+    mySide = parsed.mySide === "b" ? "b" : "w";
+    boardPerspective = parsed.boardPerspective === "b" ? "b" : "w";
+    mode = parsed.mode === "place" ? "place" : "move";
+
+    mySideSelect.value = mySide;
+    boardSideSelect.value = boardPerspective;
+  } catch {
+    // Ignore malformed URL state.
+  }
+}
+
+function encodeState(value) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(value))));
+}
+
+function decodeState(value) {
+  return JSON.parse(decodeURIComponent(escape(atob(value))));
+}
 
 function cloneBoard(sourceBoard) {
   return sourceBoard.map((row) => [...row]);
@@ -704,7 +772,6 @@ function getAttackSquaresForPiece(row, col, piece, boardState) {
   directions.forEach(([dr, dc]) => {
     let nr = row + dr;
     let nc = col + dc;
-
     while (isInBounds(nr, nc)) {
       attacks.push({ row: nr, col: nc });
       if (boardState[nr][nc]) {

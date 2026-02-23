@@ -22,6 +22,26 @@ body { margin: 0; min-height: 100vh; background: #f5f6f9; color: #1a1c23; }
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
+.controls-header {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.8rem;
+}
+
+.menu-burger {
+  display: none;
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  font-size: 1.1rem;
+}
+
+.menu-item-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
 .mode-switch { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
 button {
   border: 1px solid #ccd2e0;
@@ -34,6 +54,20 @@ button {
 button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 .top-action { width: 100%; margin-bottom: 0.9rem; }
+
+.smooth-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #34405a;
+}
+
+.smooth-toggle input {
+  margin: 0;
+}
 
 .side-toggle, .palette { margin-bottom: 1rem; }
 
@@ -85,6 +119,7 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 
 .board {
   width: min(72vmin, 760px);
+  max-width: 100%;
   aspect-ratio: 1 / 1;
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -95,8 +130,9 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   overflow: hidden;
 }
 
-.board-nav { display: flex; gap: 0.7rem; width: min(72vmin, 760px); }
+.board-nav { display: flex; gap: 0.7rem; width: min(72vmin, 760px); max-width: 100%; }
 .board-nav button { flex: 1; }
+.history-toggle-mobile { display: none; }
 
 .square {
   position: relative;
@@ -104,16 +140,29 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   place-items: center;
   width: 100%;
   height: 100%;
-  font-size: clamp(1.4rem, 3.8vmin, 2.7rem);
   user-select: none;
   cursor: pointer;
 }
-.piece { z-index: 1; line-height: 1; font-size: 60px; display: inline-flex; align-items: center; justify-content: center; }
-.piece.white {
-  color: #f8fbff;
-  text-shadow: -1px -1px 0 #4b5f73, 1px -1px 0 #4b5f73, -1px 1px 0 #4b5f73, 1px 1px 0 #4b5f73;
+.piece {
+  z-index: 1;
+  line-height: 1;
+  font-size: clamp(30px, 8.2vw, 60px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
-.piece.black { color: #1b2430; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.18); }
+.piece.white {
+  color: #f2f7ff;
+}
+.piece.black { color: #1b2430; }
+
+.moving-piece-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: transform 220ms ease-in-out;
+}
 .square.light { background: #fdfefe; }
 .square.dark { background: #c9e8ff; }
 .square.selected { outline: 3px solid #2f9cff; outline-offset: -3px; }
@@ -144,6 +193,22 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   font-weight: 600;
 }
 
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.history-header h2 {
+  margin: 0;
+}
+
+.history-close {
+  display: none;
+}
+
 .status-text { margin: 0 0 0.7rem; font-weight: 600; color: #34405a; }
 .history-list {
   margin: 0;
@@ -157,7 +222,28 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 
 @media (max-width: 1120px) {
   .layout { grid-template-columns: 1fr; }
-  .board { width: min(95vw, 760px); }
-  .board-nav { width: min(95vw, 760px); }
+  .board { width: min(96vw, 760px); }
+  .board-nav { width: min(96vw, 760px); }
   .history-list { max-height: 220px; }
+
+  .menu-burger { display: inline-flex; align-items: center; justify-content: center; }
+  .controls-body { display: none; }
+  .controls.open .controls-body { display: block; }
+
+  .history-toggle-mobile { display: inline-block; }
+  .history-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; }
+  .history-panel {
+    display: none;
+  }
+  .history-panel.open {
+    display: block;
+    position: fixed;
+    right: 0;
+    top: 0;
+    height: 100dvh;
+    width: min(86vw, 360px);
+    border-radius: 0;
+    z-index: 20;
+    overflow: auto;
+  }
 }

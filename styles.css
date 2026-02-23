@@ -55,6 +55,20 @@ button.active { background: #1f6feb; border-color: #1f6feb; color: #fff; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 .top-action { width: 100%; margin-bottom: 0.9rem; }
 
+.smooth-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #34405a;
+}
+
+.smooth-toggle input {
+  margin: 0;
+}
+
 .side-toggle, .palette { margin-bottom: 1rem; }
 
 .opacity-controls {
@@ -141,6 +155,14 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   color: #f2f7ff;
 }
 .piece.black { color: #1b2430; }
+
+.moving-piece-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: transform 220ms ease-in-out;
+}
 .square.light { background: #fdfefe; }
 .square.dark { background: #c9e8ff; }
 .square.selected { outline: 3px solid #2f9cff; outline-offset: -3px; }

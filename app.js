@@ -20,6 +20,7 @@ const undoBtn = document.getElementById("undoBtn");
 const redoBtn = document.getElementById("redoBtn");
 const resetBoardBtn = document.getElementById("resetBoardBtn");
 const switchTurnBtn = document.getElementById("switchTurnBtn");
+const smoothMoveToggle = document.getElementById("smoothMoveToggle");
 const clearBoardBtn = document.getElementById("clearBoardBtn");
 const flipHorizontalBtn = document.getElementById("flipHorizontalBtn");
 const flipVerticalBtn = document.getElementById("flipVerticalBtn");
@@ -44,6 +45,8 @@ let currentTurn = "w";
 let gameStateLabel = "";
 let greenOpacity = 0.16;
 let redOpacity = 0.16;
+let smoothMoveEnabled = false;
+let isAnimatingMove = false;
 
 let board = createInitialBoard();
 let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
@@ -88,6 +91,9 @@ function wireEvents() {
   redoBtn.addEventListener("click", redoMove);
   resetBoardBtn.addEventListener("click", resetBoard);
   switchTurnBtn.addEventListener("click", switchTurn);
+  smoothMoveToggle.addEventListener("change", () => {
+    smoothMoveEnabled = smoothMoveToggle.checked;
+  });
   clearBoardBtn.addEventListener("click", clearBoard);
   flipHorizontalBtn.addEventListener("click", flipBoardHorizontally);
   flipVerticalBtn.addEventListener("click", flipBoardVertically);
@@ -198,6 +204,8 @@ function render() {
       const { row, col } = toBoardCoords(displayRow, displayCol);
       const square = document.createElement("div");
       square.className = `square ${(displayRow + displayCol) % 2 ? "dark" : "light"}`;
+      square.dataset.row = String(row);
+      square.dataset.col = String(col);
 
       if (selectedSquare && selectedSquare.row === row && selectedSquare.col === col) {
         square.classList.add("selected");
@@ -285,6 +293,9 @@ function getHoveredAttacks() {
 }
 
 function onSquareMouseEnter(row, col) {
+  if (isAnimatingMove) {
+    return;
+  }
   const piece = board[row][col];
   if (!piece) {
     if (hoveredPiece) {
@@ -308,6 +319,9 @@ function applyPalettePiece(row, col) {
 }
 
 function onSquareRightClick(event, row, col) {
+  if (isAnimatingMove) {
+    return;
+  }
   event.preventDefault();
   if (!board[row][col]) {
     return;
@@ -319,6 +333,10 @@ function onSquareRightClick(event, row, col) {
 }
 
 function onSquareClick(row, col) {
+  if (isAnimatingMove) {
+    return;
+  }
+
   if (mode === "place") {
     handlePlaceModeClick(row, col);
     return;
@@ -392,6 +410,20 @@ function executeMove(from, to) {
   const movingPiece = board[from.row][from.col];
   const capturedPiece = board[to.row][to.col];
 
+  if (!movingPiece) {
+    clearSelections();
+    render();
+    return;
+  }
+
+  if (smoothMoveEnabled && animateMove(from, to, movingPiece)) {
+    return;
+  }
+
+  commitMove(from, to, movingPiece, capturedPiece);
+}
+
+function commitMove(from, to, movingPiece, capturedPiece) {
   board[to.row][to.col] = movingPiece;
   board[from.row][from.col] = "";
 
@@ -408,6 +440,54 @@ function executeMove(from, to) {
   recordMove(notation);
   clearSelections();
   render();
+}
+
+function animateMove(from, to, movingPiece) {
+  const fromSquare = getSquareElement(from.row, from.col);
+  const toSquare = getSquareElement(to.row, to.col);
+  if (!fromSquare || !toSquare) {
+    return false;
+  }
+
+  const fromRect = fromSquare.getBoundingClientRect();
+  const toRect = toSquare.getBoundingClientRect();
+  const dx = toRect.left - fromRect.left;
+  const dy = toRect.top - fromRect.top;
+
+  const ghost = document.createElement("span");
+  ghost.className = `piece moving-piece-ghost ${movingPiece[0] === "w" ? "white" : "black"}`;
+  ghost.textContent = PIECE_UNICODE[movingPiece];
+  ghost.style.left = `${fromRect.left + fromRect.width / 2}px`;
+  ghost.style.top = `${fromRect.top + fromRect.height / 2}px`;
+  document.body.append(ghost);
+
+  isAnimatingMove = true;
+  let finished = false;
+
+  const finishAnimation = () => {
+    if (finished) {
+      return;
+    }
+    finished = true;
+    if (ghost.isConnected) {
+      ghost.remove();
+    }
+    isAnimatingMove = false;
+    const capturedPiece = board[to.row][to.col];
+    commitMove(from, to, movingPiece, capturedPiece);
+  };
+
+  requestAnimationFrame(() => {
+    ghost.style.transform = `translate(-50%, -50%) translate(${dx}px, ${dy}px)`;
+  });
+
+  ghost.addEventListener("transitionend", finishAnimation, { once: true });
+  setTimeout(finishAnimation, 280);
+  return true;
+}
+
+function getSquareElement(row, col) {
+  return boardEl.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
 }
 
 function buildSanNotation(piece, from, to, capturedPiece) {

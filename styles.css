@@ -108,7 +108,7 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   user-select: none;
   cursor: pointer;
 }
-.piece { z-index: 1; line-height: 1; }
+.piece { z-index: 1; line-height: 1; font-size: 60px; display: inline-flex; align-items: center; justify-content: center; }
 .piece.white {
   color: #f8fbff;
   text-shadow: -1px -1px 0 #4b5f73, 1px -1px 0 #4b5f73, -1px 1px 0 #4b5f73, 1px 1px 0 #4b5f73;
@@ -129,10 +129,10 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   pointer-events: none;
 }
 .square.legal::after { background: radial-gradient(circle, rgba(47, 156, 255, 0.45) 0 26%, transparent 27%); }
-.square.capture-red::before { background: rgba(255, 66, 66, var(--red-opacity, 0.22)); }
-.square.capture-green::before { background: rgba(69, 214, 114, var(--green-opacity, 0.22)); }
-.square.hover-red { background-image: linear-gradient(rgba(166, 20, 20, calc(var(--red-opacity, 0.22) + 0.12)), rgba(166, 20, 20, calc(var(--red-opacity, 0.22) + 0.12))); }
-.square.hover-green { background-image: linear-gradient(rgba(26, 133, 54, calc(var(--green-opacity, 0.22) + 0.12)), rgba(26, 133, 54, calc(var(--green-opacity, 0.22) + 0.12))); }
+.square.capture-red::before { background: rgba(255, 66, 66, var(--red-opacity, 0.16)); }
+.square.capture-green::before { background: rgba(69, 214, 114, var(--green-opacity, 0.16)); }
+.square.hover-red { background-image: linear-gradient(rgba(166, 20, 20, calc(var(--red-opacity, 0.16) + 0.12)), rgba(166, 20, 20, calc(var(--red-opacity, 0.16) + 0.12))); }
+.square.hover-green { background-image: linear-gradient(rgba(26, 133, 54, calc(var(--green-opacity, 0.16) + 0.12)), rgba(26, 133, 54, calc(var(--green-opacity, 0.16) + 0.12))); }
 .square.capture-target-yellow { background-image: linear-gradient(rgba(255, 223, 97, 0.64), rgba(255, 223, 97, 0.64)); }
 
 .coord {

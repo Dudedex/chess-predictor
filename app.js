@@ -37,8 +37,8 @@ let selectedPlaceSource = null;
 let hoveredPiece = null;
 let currentTurn = "w";
 let gameStateLabel = "";
-let greenOpacity = 0.22;
-let redOpacity = 0.22;
+let greenOpacity = 0.16;
+let redOpacity = 0.16;
 
 let board = createInitialBoard();
 let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
@@ -315,6 +315,20 @@ function onSquareClick(row, col) {
 }
 
 function handlePlaceModeClick(row, col) {
+  if (selectedPalettePiece === "") {
+    if (board[row][col]) {
+      board[row][col] = "";
+      clearSelections();
+      resetHistoryFromCurrentBoard();
+      render();
+      return;
+    }
+
+    clearSelections();
+    render();
+    return;
+  }
+
   if (selectedPlaceSource) {
     if (selectedPlaceSource.row === row && selectedPlaceSource.col === col) {
       selectedPlaceSource = null;

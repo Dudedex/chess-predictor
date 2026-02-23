@@ -10,6 +10,8 @@ const moveModeBtn = document.getElementById("moveModeBtn");
 const placeModeBtn = document.getElementById("placeModeBtn");
 const mySideSelect = document.getElementById("mySideSelect");
 const boardSideSelect = document.getElementById("boardSideSelect");
+const greenOpacityInput = document.getElementById("greenOpacity");
+const redOpacityInput = document.getElementById("redOpacity");
 const piecePalette = document.getElementById("piecePalette");
 const whitePaletteEl = document.getElementById("whitePalette");
 const blackPaletteEl = document.getElementById("blackPalette");
@@ -20,6 +22,7 @@ const resetBoardBtn = document.getElementById("resetBoardBtn");
 const switchTurnBtn = document.getElementById("switchTurnBtn");
 const clearBoardBtn = document.getElementById("clearBoardBtn");
 const flipHorizontalBtn = document.getElementById("flipHorizontalBtn");
+const flipVerticalBtn = document.getElementById("flipVerticalBtn");
 const historyListEl = document.getElementById("historyList");
 const statusTextEl = document.getElementById("statusText");
 const placeActionsEl = document.getElementById("placeActions");
@@ -34,6 +37,8 @@ let selectedPlaceSource = null;
 let hoveredPiece = null;
 let currentTurn = "w";
 let gameStateLabel = "";
+let greenOpacity = 0.22;
+let redOpacity = 0.22;
 
 let board = createInitialBoard();
 let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
@@ -44,6 +49,8 @@ applyStateFromUrl();
 initPalette();
 wireEvents();
 updateGameStateLabel();
+greenOpacityInput.value = String(greenOpacity);
+redOpacityInput.value = String(redOpacity);
 setMode(mode);
 
 function wireEvents() {
@@ -55,6 +62,14 @@ function wireEvents() {
   });
   boardSideSelect.addEventListener("change", () => {
     boardPerspective = boardSideSelect.value;
+    render();
+  });
+  greenOpacityInput.addEventListener("input", () => {
+    greenOpacity = Number(greenOpacityInput.value);
+    render();
+  });
+  redOpacityInput.addEventListener("input", () => {
+    redOpacity = Number(redOpacityInput.value);
     render();
   });
   boardEl.addEventListener("mouseleave", () => {
@@ -70,6 +85,7 @@ function wireEvents() {
   switchTurnBtn.addEventListener("click", switchTurn);
   clearBoardBtn.addEventListener("click", clearBoard);
   flipHorizontalBtn.addEventListener("click", flipBoardHorizontally);
+  flipVerticalBtn.addEventListener("click", flipBoardVertically);
 }
 
 function setMode(nextMode) {
@@ -81,6 +97,7 @@ function setMode(nextMode) {
   clearBoardBtn.disabled = !isPlace;
   resetBoardBtn.disabled = !isPlace;
   flipHorizontalBtn.disabled = !isPlace;
+  flipVerticalBtn.disabled = !isPlace;
   piecePalette.classList.toggle("hidden", !isPlace);
   placeActionsEl.classList.toggle("hidden", !isPlace);
 
@@ -122,6 +139,8 @@ function updateSelectedPaletteButton(activeButton) {
 }
 
 function render() {
+  boardEl.style.setProperty("--green-opacity", String(greenOpacity));
+  boardEl.style.setProperty("--red-opacity", String(redOpacity));
   boardEl.innerHTML = "";
   const myCaptures = getCapturableSquares(mySide, board);
   const oppCaptures = getCapturableSquares(mySide === "w" ? "b" : "w", board);
@@ -493,6 +512,16 @@ function resetBoard() {
 }
 
 function flipBoardHorizontally() {
+  // Flip on X-axis: top <-> bottom
+  board = [...board].reverse().map((row) => [...row]);
+  clearSelections();
+  resetHistoryFromCurrentBoard();
+  updateGameStateLabel();
+  render();
+}
+
+function flipBoardVertically() {
+  // Flip on Y-axis: left <-> right
   board = board.map((row) => [...row].reverse());
   clearSelections();
   resetHistoryFromCurrentBoard();
@@ -517,12 +546,6 @@ function syncUrlState() {
   const payload = {
     board,
     currentTurn,
-    moveHistory,
-    historyPointer,
-    historySnapshots,
-    mySide,
-    boardPerspective,
-    mode,
   };
 
   const encoded = encodeState(payload);
@@ -543,29 +566,18 @@ function applyStateFromUrl() {
       return;
     }
 
-    board = parsed.board.map((row) => (Array.isArray(row) ? row.slice(0, 8) : Array(8).fill("")));
+    board = parsed.board.map((row) => {
+      const safe = Array.isArray(row) ? row.slice(0, 8) : [];
+      while (safe.length < 8) {
+        safe.push("");
+      }
+      return safe;
+    });
+
     currentTurn = parsed.currentTurn === "b" ? "b" : "w";
-    moveHistory = Array.isArray(parsed.moveHistory) ? parsed.moveHistory.slice() : [];
-    historyPointer = Number.isInteger(parsed.historyPointer) ? parsed.historyPointer : moveHistory.length;
 
-    if (Array.isArray(parsed.historySnapshots) && parsed.historySnapshots.length) {
-      historySnapshots = parsed.historySnapshots.map((snap) => ({
-        board: cloneBoard(snap.board),
-        turn: snap.turn === "b" ? "b" : "w",
-      }));
-    } else {
-      historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
-      moveHistory = [];
-      historyPointer = 0;
-    }
-
-    historyPointer = Math.max(0, Math.min(historyPointer, moveHistory.length));
-    mySide = parsed.mySide === "b" ? "b" : "w";
-    boardPerspective = parsed.boardPerspective === "b" ? "b" : "w";
-    mode = parsed.mode === "place" ? "place" : "move";
-
-    mySideSelect.value = mySide;
-    boardSideSelect.value = boardPerspective;
+    // URL import intentionally contains board coordinates + side to move.
+    resetHistoryFromCurrentBoard();
   } catch {
     // Ignore malformed URL state.
   }

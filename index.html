@@ -33,6 +33,14 @@
           </select>
         </div>
 
+        <div class="opacity-controls">
+          <label for="greenOpacity">Green opacity</label>
+          <input id="greenOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.22" />
+
+          <label for="redOpacity">Red opacity</label>
+          <input id="redOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.22" />
+        </div>
+
         <fieldset id="piecePalette" class="palette" disabled>
           <legend>Place piece</legend>
           <div class="palette-group">
@@ -52,7 +60,8 @@
         <div id="placeActions" class="place-actions">
           <button id="clearBoardBtn" type="button" disabled>Clear board</button>
           <button id="resetBoardBtn" type="button" disabled>Reset</button>
-          <button id="flipHorizontalBtn" type="button" disabled>Flip ↔</button>
+          <button id="flipHorizontalBtn" type="button" disabled>Flip X (top↔bottom)</button>
+          <button id="flipVerticalBtn" type="button" disabled>Flip Y (left↔right)</button>
         </div>
       </section>
 

@@ -200,8 +200,11 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 .square.capture-green::before { background: rgba(69, 214, 114, var(--green-opacity, 0.16)); }
 .square.capture-mixed::before {
   background-image:
-    linear-gradient(rgba(255, 66, 66, var(--red-opacity, 0.16)), rgba(255, 66, 66, var(--red-opacity, 0.16))),
-    linear-gradient(rgba(69, 214, 114, var(--green-opacity, 0.16)), rgba(69, 214, 114, var(--green-opacity, 0.16)));
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 66, 66, var(--red-opacity, 0.16)) 0 10px,
+      rgba(69, 214, 114, var(--green-opacity, 0.16)) 10px 20px
+    );
 }
 .square.hover-red { background-image: linear-gradient(rgba(166, 20, 20, calc(var(--red-opacity, 0.16) + 0.12)), rgba(166, 20, 20, calc(var(--red-opacity, 0.16) + 0.12))); }
 .square.hover-green { background-image: linear-gradient(rgba(26, 133, 54, calc(var(--green-opacity, 0.16) + 0.12)), rgba(26, 133, 54, calc(var(--green-opacity, 0.16) + 0.12))); }

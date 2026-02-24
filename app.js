@@ -47,9 +47,10 @@ let greenOpacity = 0.16;
 let redOpacity = 0.16;
 let smoothMoveEnabled = false;
 let isAnimatingMove = false;
+let enPassantTarget = null;
 
 let board = createInitialBoard();
-let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
+let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn, enPassantTarget: cloneEnPassantTarget(enPassantTarget) }];
 let moveHistory = [];
 let historyPointer = 0;
 
@@ -352,8 +353,9 @@ function onSquareClick(row, col) {
 
   const clickedPiece = board[row][col];
 
-  if (selectedSquare && legalMoves.some((move) => move.row === row && move.col === col)) {
-    executeMove(selectedSquare, { row, col });
+  const selectedMove = selectedSquare ? legalMoves.find((move) => move.row === row && move.col === col) : null;
+  if (selectedMove) {
+    executeMove(selectedSquare, selectedMove);
     return;
   }
 
@@ -410,9 +412,12 @@ function handlePlaceModeClick(row, col) {
   applyPalettePiece(row, col);
 }
 
-function executeMove(from, to) {
+function executeMove(from, move) {
+  const to = { row: move.row, col: move.col };
   const movingPiece = board[from.row][from.col];
-  const capturedPiece = board[to.row][to.col];
+  const capturedPiece = move.enPassant
+    ? board[move.capturedRow][move.capturedCol]
+    : board[to.row][to.col];
 
   if (!movingPiece) {
     clearSelections();
@@ -420,16 +425,29 @@ function executeMove(from, to) {
     return;
   }
 
-  if (smoothMoveEnabled && animateMove(from, to, movingPiece)) {
+  if (smoothMoveEnabled && animateMove(from, move, movingPiece)) {
     return;
   }
 
-  commitMove(from, to, movingPiece, capturedPiece);
+  commitMove(from, move, movingPiece, capturedPiece);
 }
 
-function commitMove(from, to, movingPiece, capturedPiece) {
+function commitMove(from, move, movingPiece, capturedPiece) {
+  const to = { row: move.row, col: move.col };
   board[to.row][to.col] = movingPiece;
   board[from.row][from.col] = "";
+  if (move.enPassant) {
+    board[move.capturedRow][move.capturedCol] = "";
+  }
+
+  enPassantTarget = null;
+  if (movingPiece[1] === "p" && Math.abs(to.row - from.row) === 2) {
+    enPassantTarget = {
+      row: (to.row + from.row) / 2,
+      col: from.col,
+      pawnColor: movingPiece[0],
+    };
+  }
 
   currentTurn = currentTurn === "w" ? "b" : "w";
   updateGameStateLabel();
@@ -446,7 +464,8 @@ function commitMove(from, to, movingPiece, capturedPiece) {
   render();
 }
 
-function animateMove(from, to, movingPiece) {
+function animateMove(from, move, movingPiece) {
+  const to = { row: move.row, col: move.col };
   const fromSquare = getSquareElement(from.row, from.col);
   const toSquare = getSquareElement(to.row, to.col);
   if (!fromSquare || !toSquare) {
@@ -477,8 +496,10 @@ function animateMove(from, to, movingPiece) {
       ghost.remove();
     }
     isAnimatingMove = false;
-    const capturedPiece = board[to.row][to.col];
-    commitMove(from, to, movingPiece, capturedPiece);
+    const capturedPiece = move.enPassant
+      ? board[move.capturedRow][move.capturedCol]
+      : board[to.row][to.col];
+    commitMove(from, move, movingPiece, capturedPiece);
   };
 
   requestAnimationFrame(() => {
@@ -582,7 +603,11 @@ function recordMove(notation) {
   }
 
   moveHistory.push(notation);
-  historySnapshots.push({ board: cloneBoard(board), turn: currentTurn });
+  historySnapshots.push({
+    board: cloneBoard(board),
+    turn: currentTurn,
+    enPassantTarget: cloneEnPassantTarget(enPassantTarget),
+  });
   historyPointer += 1;
 }
 
@@ -593,6 +618,7 @@ function undoMove() {
   historyPointer -= 1;
   board = cloneBoard(historySnapshots[historyPointer].board);
   currentTurn = historySnapshots[historyPointer].turn;
+  enPassantTarget = cloneEnPassantTarget(historySnapshots[historyPointer].enPassantTarget);
   clearSelections();
   updateGameStateLabel();
   render();
@@ -605,6 +631,7 @@ function redoMove() {
   historyPointer += 1;
   board = cloneBoard(historySnapshots[historyPointer].board);
   currentTurn = historySnapshots[historyPointer].turn;
+  enPassantTarget = cloneEnPassantTarget(historySnapshots[historyPointer].enPassantTarget);
   clearSelections();
   updateGameStateLabel();
   render();
@@ -612,13 +639,18 @@ function redoMove() {
 
 function switchTurn() {
   currentTurn = currentTurn === "w" ? "b" : "w";
+  enPassantTarget = null;
   clearSelections();
 
   if (historyPointer < moveHistory.length) {
     moveHistory = moveHistory.slice(0, historyPointer);
     historySnapshots = historySnapshots.slice(0, historyPointer + 1);
   }
-  historySnapshots[historyPointer] = { board: cloneBoard(board), turn: currentTurn };
+  historySnapshots[historyPointer] = {
+    board: cloneBoard(board),
+    turn: currentTurn,
+    enPassantTarget: cloneEnPassantTarget(enPassantTarget),
+  };
 
   updateGameStateLabel();
   render();
@@ -627,6 +659,7 @@ function switchTurn() {
 function clearBoard() {
   board = Array.from({ length: 8 }, () => Array(8).fill(""));
   currentTurn = "w";
+  enPassantTarget = null;
   clearSelections();
   resetHistoryFromCurrentBoard();
   updateGameStateLabel();
@@ -636,6 +669,7 @@ function clearBoard() {
 function resetBoard() {
   board = createInitialBoard();
   currentTurn = "w";
+  enPassantTarget = null;
   clearSelections();
   resetHistoryFromCurrentBoard();
   updateGameStateLabel();
@@ -645,6 +679,7 @@ function resetBoard() {
 function flipBoardHorizontally() {
   // Flip on X-axis: top <-> bottom
   board = [...board].reverse().map((row) => [...row]);
+  enPassantTarget = null;
   clearSelections();
   resetHistoryFromCurrentBoard();
   updateGameStateLabel();
@@ -654,6 +689,7 @@ function flipBoardHorizontally() {
 function flipBoardVertically() {
   // Flip on Y-axis: left <-> right
   board = board.map((row) => [...row].reverse());
+  enPassantTarget = null;
   clearSelections();
   resetHistoryFromCurrentBoard();
   updateGameStateLabel();
@@ -661,7 +697,11 @@ function flipBoardVertically() {
 }
 
 function resetHistoryFromCurrentBoard() {
-  historySnapshots = [{ board: cloneBoard(board), turn: currentTurn }];
+  historySnapshots = [{
+    board: cloneBoard(board),
+    turn: currentTurn,
+    enPassantTarget: cloneEnPassantTarget(enPassantTarget),
+  }];
   moveHistory = [];
   historyPointer = 0;
 }
@@ -706,6 +746,7 @@ function applyStateFromUrl() {
     });
 
     currentTurn = parsed.currentTurn === "b" ? "b" : "w";
+    enPassantTarget = null;
 
     // URL import intentionally contains board coordinates + side to move.
     resetHistoryFromCurrentBoard();
@@ -739,19 +780,18 @@ function createInitialBoard() {
   ];
 }
 
-function getLegalMoves(row, col, piece, boardState) {
-  const pseudoMoves = getPseudoLegalMoves(row, col, piece, boardState);
+function getLegalMoves(row, col, piece, boardState, epTarget = enPassantTarget) {
+  const pseudoMoves = getPseudoLegalMoves(row, col, piece, boardState, epTarget);
   const color = piece[0];
 
   return pseudoMoves.filter((move) => {
     const nextBoard = cloneBoard(boardState);
-    nextBoard[move.row][move.col] = nextBoard[row][col];
-    nextBoard[row][col] = "";
+    applyMoveOnBoard(nextBoard, { row, col }, move);
     return !isKingInCheck(color, nextBoard);
   });
 }
 
-function getPseudoLegalMoves(row, col, piece, boardState) {
+function getPseudoLegalMoves(row, col, piece, boardState, epTarget = enPassantTarget) {
   const color = piece[0];
   const type = piece[1];
   const moves = [];
@@ -776,6 +816,16 @@ function getPseudoLegalMoves(row, col, piece, boardState) {
       const target = boardState[nr][nc];
       if (target && target[0] !== color) {
         moves.push({ row: nr, col: nc });
+        return;
+      }
+      if (
+        epTarget
+        && epTarget.row === nr
+        && epTarget.col === nc
+        && epTarget.pawnColor !== color
+        && boardState[row][nc] === `${epTarget.pawnColor}p`
+      ) {
+        moves.push({ row: nr, col: nc, enPassant: true, capturedRow: row, capturedCol: nc });
       }
     });
 
@@ -936,6 +986,22 @@ function pushIfValidMove(row, col, color, collection, boardState) {
   if (!target || target[0] !== color) {
     collection.push({ row, col });
   }
+}
+
+function applyMoveOnBoard(boardState, from, move) {
+  const movingPiece = boardState[from.row][from.col];
+  boardState[move.row][move.col] = movingPiece;
+  boardState[from.row][from.col] = "";
+  if (move.enPassant) {
+    boardState[move.capturedRow][move.capturedCol] = "";
+  }
+}
+
+function cloneEnPassantTarget(target) {
+  if (!target) {
+    return null;
+  }
+  return { ...target };
 }
 
 function toBoardCoords(displayRow, displayCol) {

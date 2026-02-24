@@ -1,6 +1,6 @@
 const PIECE_UNICODE = {
-  wk: "♚", wq: "♛", wr: "♜", wb: "♝", wn: "♞", wp: "♟",
-  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
+  wk: "♚", wq: "♛", wr: "♜", wb: "🨡", wn: "♞", wp: "🨸",
+  bk: "♚", bq: "♛", br: "♜", bb: "🨒", bn: "♞", bp: "🨔",
 };
 const PIECE_LETTER = { p: "", n: "N", b: "B", r: "R", q: "Q", k: "K" };
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];

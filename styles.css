@@ -99,16 +99,11 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 .palette-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.4rem; }
 .palette button { padding: 0.4rem; font-size: 1.15rem; }
 .palette button.selected { outline: 2px solid #1f6feb; }
-.palette button.palette-piece-white {
-  color: #eceff3;
-  -webkit-text-stroke: 0.5px #555b66;
-  text-shadow: 0 1px 0 rgba(56, 60, 66, 0.35);
-}
-
-.palette button.palette-piece-black {
-  color: #66686d;
-  -webkit-text-stroke: 0.5px #2f3238;
-  text-shadow: 0 1px 0 rgba(22, 24, 29, 0.35);
+.palette button .piece-icon {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
+  margin: 0 auto;
 }
 
 .place-actions {
@@ -158,20 +153,14 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   z-index: 1;
   line-height: 1;
   font-size: clamp(30px, 8.2vw, 54px);
-  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
-.piece.white {
-  color: #eceff3;
-  -webkit-text-stroke: 0.5px #555b66;
-  text-shadow: 0 1px 0 rgba(56, 60, 66, 0.35);
-}
-.piece.black {
-  color: #66686d;
-  -webkit-text-stroke: 0.5px #2f3238;
-  text-shadow: 0 1px 0 rgba(22, 24, 29, 0.35);
+.piece .piece-icon {
+  width: 1em;
+  height: 1em;
+  display: block;
 }
 
 .moving-piece-ghost {

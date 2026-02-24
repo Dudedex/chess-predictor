@@ -1,6 +1,6 @@
-const PIECE_UNICODE = {
-  wk: "♚", wq: "♛", wr: "♜", wb: "♝", wn: "♞", wp: "♟",
-  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
+const PIECE_ICONS = {
+  wk: "assets/pieces/wK.svg", wq: "assets/pieces/wQ.svg", wr: "assets/pieces/wR.svg", wb: "assets/pieces/wB.svg", wn: "assets/pieces/wN.svg", wp: "assets/pieces/wP.svg",
+  bk: "assets/pieces/bK.svg", bq: "assets/pieces/bQ.svg", br: "assets/pieces/bR.svg", bb: "assets/pieces/bB.svg", bn: "assets/pieces/bN.svg", bp: "assets/pieces/bP.svg",
 };
 const PIECE_LETTER = { p: "", n: "N", b: "B", r: "R", q: "Q", k: "K" };
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -163,8 +163,8 @@ function initPalette() {
 function createPaletteButton(piece) {
   const button = document.createElement("button");
   button.type = "button";
-  button.textContent = PIECE_UNICODE[piece];
   button.title = piece;
+  button.append(createPieceImage(piece));
   button.classList.add(piece[0] === "w" ? "palette-piece-white" : "palette-piece-black");
   button.classList.toggle("selected", piece === selectedPalettePiece);
   button.addEventListener("click", () => {
@@ -172,6 +172,15 @@ function createPaletteButton(piece) {
     updateSelectedPaletteButton(button);
   });
   return button;
+}
+
+function createPieceImage(piece) {
+  const icon = document.createElement("img");
+  icon.className = "piece-icon";
+  icon.src = PIECE_ICONS[piece];
+  icon.alt = piece;
+  icon.draggable = false;
+  return icon;
 }
 
 function updateSelectedPaletteButton(activeButton) {
@@ -241,7 +250,7 @@ function render() {
       if (piece) {
         const pieceEl = document.createElement("span");
         pieceEl.className = `piece ${piece[0] === "w" ? "white" : "black"}`;
-        pieceEl.textContent = PIECE_UNICODE[piece];
+        pieceEl.append(createPieceImage(piece));
         square.append(pieceEl);
       }
 
@@ -479,7 +488,7 @@ function animateMove(from, move, movingPiece) {
 
   const ghost = document.createElement("span");
   ghost.className = `piece moving-piece-ghost ${movingPiece[0] === "w" ? "white" : "black"}`;
-  ghost.textContent = PIECE_UNICODE[movingPiece];
+  ghost.append(createPieceImage(movingPiece));
   ghost.style.left = `${fromRect.left + fromRect.width / 2}px`;
   ghost.style.top = `${fromRect.top + fromRect.height / 2}px`;
   document.body.append(ghost);

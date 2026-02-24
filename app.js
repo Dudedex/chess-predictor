@@ -164,6 +164,7 @@ function createPaletteButton(piece) {
   button.type = "button";
   button.textContent = PIECE_UNICODE[piece];
   button.title = piece;
+  button.classList.add(piece[0] === "w" ? "palette-piece-white" : "palette-piece-black");
   button.classList.toggle("selected", piece === selectedPalettePiece);
   button.addEventListener("click", () => {
     selectedPalettePiece = piece;

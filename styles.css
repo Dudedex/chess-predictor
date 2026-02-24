@@ -101,13 +101,13 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 .palette button.selected { outline: 2px solid #1f6feb; }
 .palette button.palette-piece-white {
   color: #eceff3;
-  -webkit-text-stroke: 1px #555b66;
+  -webkit-text-stroke: 0.5px #555b66;
   text-shadow: 0 1px 0 rgba(56, 60, 66, 0.35);
 }
 
 .palette button.palette-piece-black {
   color: #66686d;
-  -webkit-text-stroke: 1px #2f3238;
+  -webkit-text-stroke: 0.5px #2f3238;
   text-shadow: 0 1px 0 rgba(22, 24, 29, 0.35);
 }
 
@@ -165,12 +165,12 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 }
 .piece.white {
   color: #eceff3;
-  -webkit-text-stroke: 1px #555b66;
+  -webkit-text-stroke: 0.5px #555b66;
   text-shadow: 0 1px 0 rgba(56, 60, 66, 0.35);
 }
 .piece.black {
   color: #66686d;
-  -webkit-text-stroke: 1px #2f3238;
+  -webkit-text-stroke: 0.5px #2f3238;
   text-shadow: 0 1px 0 rgba(22, 24, 29, 0.35);
 }
 

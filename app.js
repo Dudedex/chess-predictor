@@ -217,10 +217,13 @@ function render() {
       if (legalMoves.some((m) => m.row === row && m.col === col)) {
         square.classList.add("legal");
       }
-      if (myCaptures.has(key(row, col))) {
+      const isMyCapture = myCaptures.has(key(row, col));
+      const isOppCapture = oppCaptures.has(key(row, col));
+      if (isMyCapture && isOppCapture) {
+        square.classList.add("capture-mixed");
+      } else if (isMyCapture) {
         square.classList.add("capture-green");
-      }
-      if (oppCaptures.has(key(row, col))) {
+      } else if (isOppCapture) {
         square.classList.add("capture-red");
       }
       if (hoveredPiece && hoveredAttacks.has(key(row, col))) {

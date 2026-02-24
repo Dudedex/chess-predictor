@@ -188,7 +188,8 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 
 .square.legal::after,
 .square.capture-red::before,
-.square.capture-green::before {
+.square.capture-green::before,
+.square.capture-mixed::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -197,6 +198,11 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 .square.legal::after { background: radial-gradient(circle, rgba(47, 156, 255, 0.45) 0 26%, transparent 27%); }
 .square.capture-red::before { background: rgba(255, 66, 66, var(--red-opacity, 0.16)); }
 .square.capture-green::before { background: rgba(69, 214, 114, var(--green-opacity, 0.16)); }
+.square.capture-mixed::before {
+  background-image:
+    linear-gradient(rgba(255, 66, 66, var(--red-opacity, 0.16)), rgba(255, 66, 66, var(--red-opacity, 0.16))),
+    linear-gradient(rgba(69, 214, 114, var(--green-opacity, 0.16)), rgba(69, 214, 114, var(--green-opacity, 0.16)));
+}
 .square.hover-red { background-image: linear-gradient(rgba(166, 20, 20, calc(var(--red-opacity, 0.16) + 0.12)), rgba(166, 20, 20, calc(var(--red-opacity, 0.16) + 0.12))); }
 .square.hover-green { background-image: linear-gradient(rgba(26, 133, 54, calc(var(--green-opacity, 0.16) + 0.12)), rgba(26, 133, 54, calc(var(--green-opacity, 0.16) + 0.12))); }
 .square.capture-target-yellow { background-image: linear-gradient(rgba(255, 223, 97, 0.64), rgba(255, 223, 97, 0.64)); }
@@ -238,9 +244,25 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 }
 
 @media (max-width: 1120px) {
-  .layout { grid-template-columns: 1fr; }
-  .board { width: min(96vw, 760px); }
-  .board-nav { width: min(96vw, 760px); }
+  body {
+    overflow-x: hidden;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 0.75rem;
+    width: 100%;
+  }
+
+  .controls,
+  .board-wrap {
+    width: min(100%, 760px);
+    margin-inline: auto;
+  }
+
+  .board { width: min(100%, 760px); }
+  .board-nav { width: min(100%, 760px); }
   .history-list { max-height: 220px; }
 
   .menu-burger { display: inline-flex; align-items: center; justify-content: center; }

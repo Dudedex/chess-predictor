@@ -163,7 +163,7 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 }
 .piece.white {
   color: #f5f7fb;
-  -webkit-text-stroke: 0.5px #20242b;
+  -webkit-text-stroke: 1px #20242b;
   text-shadow: 0 1px 0 rgba(32, 36, 43, 0.2);
 }
 

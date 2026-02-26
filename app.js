@@ -32,6 +32,10 @@ const menuBurgerBtn = document.getElementById("menuBurgerBtn");
 const historyPanelEl = document.getElementById("historyPanel");
 const historyToggleBtn = document.getElementById("historyToggleBtn");
 const historyCloseBtn = document.getElementById("historyCloseBtn");
+const endgameModalEl = document.getElementById("endgameModal");
+const endgameTitleEl = document.getElementById("endgameTitle");
+const endgameMessageEl = document.getElementById("endgameMessage");
+const endgameCloseBtn = document.getElementById("endgameCloseBtn");
 
 let mode = "move";
 let mySide = "w";
@@ -48,6 +52,8 @@ let redOpacity = 0.16;
 let smoothMoveEnabled = false;
 let isAnimatingMove = false;
 let enPassantTarget = null;
+let endgameState = null;
+let dismissedEndgameKey = null;
 
 let board = createInitialBoard();
 let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn, enPassantTarget: cloneEnPassantTarget(enPassantTarget) }];
@@ -101,6 +107,12 @@ function wireEvents() {
   menuBurgerBtn.addEventListener("click", toggleControlsMenu);
   historyToggleBtn.addEventListener("click", toggleHistoryPanel);
   historyCloseBtn.addEventListener("click", closeHistoryPanel);
+  endgameCloseBtn.addEventListener("click", () => {
+    if (endgameState) {
+      dismissedEndgameKey = getEndgameKey(endgameState);
+    }
+    endgameModalEl.classList.add("hidden");
+  });
   document.addEventListener("click", (event) => {
     if (!historyPanelEl.classList.contains("open")) {
       return;
@@ -261,6 +273,7 @@ function render() {
   statusTextEl.textContent = gameStateLabel || `Turn: ${currentTurn === "w" ? "White" : "Black"}`;
   undoBtn.disabled = historyPointer === 0;
   redoBtn.disabled = historyPointer >= moveHistory.length;
+  renderEndgameModal();
 
   syncUrlState();
 }
@@ -347,7 +360,7 @@ function onSquareClick(row, col) {
     return;
   }
 
-  if (gameStateLabel.includes("Checkmate")) {
+  if (endgameState) {
     return;
   }
 
@@ -530,18 +543,67 @@ function buildSanNotation(piece, from, to, capturedPiece) {
 }
 
 function updateGameStateLabel() {
-  const inCheck = isKingInCheck(currentTurn, board);
-  const hasMoves = hasAnyLegalMove(currentTurn, board);
+  endgameState = getEndgameState();
 
-  if (inCheck && !hasMoves) {
-    gameStateLabel = `Checkmate: ${currentTurn === "w" ? "Black" : "White"} wins`;
+  if (endgameState?.type === "checkmate") {
+    gameStateLabel = `Checkmate: ${endgameState.winner === "w" ? "White" : "Black"} wins`;
     return;
   }
-  if (inCheck) {
+  if (endgameState?.type === "stalemate") {
+    gameStateLabel = "Stalemate: Draw";
+    return;
+  }
+  if (isKingInCheck(currentTurn, board)) {
     gameStateLabel = `Check: ${currentTurn === "w" ? "White" : "Black"} king under attack`;
     return;
   }
   gameStateLabel = `Turn: ${currentTurn === "w" ? "White" : "Black"}`;
+}
+
+function getEndgameState() {
+  const inCheck = isKingInCheck(currentTurn, board);
+  const hasMoves = hasAnyLegalMove(currentTurn, board);
+  if (hasMoves) {
+    return null;
+  }
+  if (inCheck) {
+    return {
+      type: "checkmate",
+      winner: currentTurn === "w" ? "b" : "w",
+    };
+  }
+  return { type: "stalemate" };
+}
+
+function getEndgameKey(state) {
+  if (!state) {
+    return "";
+  }
+  return state.type === "checkmate" ? `${state.type}-${state.winner}` : state.type;
+}
+
+function renderEndgameModal() {
+  if (!endgameState) {
+    endgameModalEl.classList.add("hidden");
+    dismissedEndgameKey = null;
+    return;
+  }
+
+  const currentKey = getEndgameKey(endgameState);
+  if (dismissedEndgameKey === currentKey) {
+    endgameModalEl.classList.add("hidden");
+    return;
+  }
+
+  if (endgameState.type === "stalemate") {
+    endgameTitleEl.textContent = "Stalemate";
+    endgameMessageEl.textContent = "Game ended in a draw";
+  } else {
+    const winner = endgameState.winner === "w" ? "White" : "Black";
+    endgameTitleEl.textContent = "Checkmate";
+    endgameMessageEl.textContent = `Team ${winner} wins`;
+  }
+  endgameModalEl.classList.remove("hidden");
 }
 
 function hasAnyLegalMove(color, boardState) {

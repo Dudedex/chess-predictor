@@ -163,7 +163,7 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
 }
 .piece.white {
   color: #f5f7fb;
-  -webkit-text-stroke: 1px #20242b;
+  -webkit-text-stroke: 0.5px #20242b;
   text-shadow: 0 1px 0 rgba(32, 36, 43, 0.2);
 }
 
@@ -244,6 +244,34 @@ select { margin-top: 0.35rem; padding: 0.4rem; border-radius: 7px; border: 1px s
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9rem;
   line-height: 1.45;
+}
+
+.endgame-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 24, 39, 0.5);
+  z-index: 50;
+  padding: 1rem;
+}
+
+.endgame-card {
+  width: min(92vw, 430px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+  padding: 1.2rem;
+  text-align: center;
+}
+
+.endgame-card h2 {
+  margin: 0 0 0.5rem;
+}
+
+.endgame-card p {
+  margin: 0 0 1rem;
+  color: #374151;
 }
 
 @media (max-width: 1120px) {

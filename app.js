@@ -597,11 +597,11 @@ function renderEndgameModal() {
 
   if (endgameState.type === "stalemate") {
     endgameTitleEl.textContent = "Stalemate";
-    endgameMessageEl.textContent = "Game ends in a draw => (stalemate)";
+    endgameMessageEl.textContent = "Game ended in a draw";
   } else {
     const winner = endgameState.winner === "w" ? "White" : "Black";
     endgameTitleEl.textContent = "Checkmate";
-    endgameMessageEl.textContent = `Team ${winner} wins => (checkmate)`;
+    endgameMessageEl.textContent = `Team ${winner} wins`;
   }
   endgameModalEl.classList.remove("hidden");
 }

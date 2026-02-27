@@ -18,37 +18,40 @@
           <div class="mode-switch" role="group" aria-label="Board interaction mode">
             <button id="moveModeBtn" class="active">Move mode</button>
             <button id="placeModeBtn">Place mode</button>
+            <button id="settingsMenuBtn" class="settings-btn" type="button" aria-label="Open settings">⚙️</button>
           </div>
 
-          <button id="switchTurnBtn" type="button" class="top-action">Switch turn</button>
+          <div id="settingsSection" class="settings-section hidden">
+            <button id="switchTurnBtn" type="button" class="top-action">Switch turn</button>
 
-          <label class="smooth-toggle">
-            <input id="smoothMoveToggle" type="checkbox" />
-            Smooth moving
-          </label>
+            <label class="smooth-toggle">
+              <input id="smoothMoveToggle" type="checkbox" />
+              Smooth moving
+            </label>
 
-          <div class="side-toggle">
-            <label for="mySideSelect">My side (green overlay)</label>
-            <select id="mySideSelect">
-              <option value="w">White</option>
-              <option value="b">Black</option>
-            </select>
-          </div>
+            <div class="side-toggle">
+              <label for="mySideSelect">My side (green overlay)</label>
+              <select id="mySideSelect">
+                <option value="w">White</option>
+                <option value="b">Black</option>
+              </select>
+            </div>
 
-          <div class="side-toggle">
-            <label for="boardSideSelect">Board perspective</label>
-            <select id="boardSideSelect">
-              <option value="w">White at bottom</option>
-              <option value="b">Black at bottom</option>
-            </select>
-          </div>
+            <div class="side-toggle">
+              <label for="boardSideSelect">Board perspective</label>
+              <select id="boardSideSelect">
+                <option value="w">White at bottom</option>
+                <option value="b">Black at bottom</option>
+              </select>
+            </div>
 
-          <div class="opacity-controls">
-            <label for="greenOpacity">Green opacity</label>
-            <input id="greenOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.16" />
+            <div class="opacity-controls">
+              <label for="greenOpacity">Green opacity</label>
+              <input id="greenOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.16" />
 
-            <label for="redOpacity">Red opacity</label>
-            <input id="redOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.16" />
+              <label for="redOpacity">Red opacity</label>
+              <input id="redOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.16" />
+            </div>
           </div>
 
           <fieldset id="piecePalette" class="palette" disabled>
@@ -97,6 +100,14 @@
         <h2 id="endgameTitle"></h2>
         <p id="endgameMessage"></p>
         <button id="endgameCloseBtn" type="button">Close</button>
+      </div>
+    </div>
+
+    <div id="promotionModal" class="endgame-modal hidden" role="dialog" aria-modal="true" aria-labelledby="promotionTitle">
+      <div class="endgame-card">
+        <h2 id="promotionTitle">Pawn Promotion</h2>
+        <p>Choose a piece for promotion.</p>
+        <div id="promotionChoices" class="promotion-choices"></div>
       </div>
     </div>
 

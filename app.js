@@ -8,6 +8,8 @@ const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const boardEl = document.getElementById("board");
 const moveModeBtn = document.getElementById("moveModeBtn");
 const placeModeBtn = document.getElementById("placeModeBtn");
+const settingsMenuBtn = document.getElementById("settingsMenuBtn");
+const settingsSectionEl = document.getElementById("settingsSection");
 const mySideSelect = document.getElementById("mySideSelect");
 const boardSideSelect = document.getElementById("boardSideSelect");
 const greenOpacityInput = document.getElementById("greenOpacity");
@@ -36,6 +38,8 @@ const endgameModalEl = document.getElementById("endgameModal");
 const endgameTitleEl = document.getElementById("endgameTitle");
 const endgameMessageEl = document.getElementById("endgameMessage");
 const endgameCloseBtn = document.getElementById("endgameCloseBtn");
+const promotionModalEl = document.getElementById("promotionModal");
+const promotionChoicesEl = document.getElementById("promotionChoices");
 
 let mode = "move";
 let mySide = "w";
@@ -54,6 +58,7 @@ let isAnimatingMove = false;
 let enPassantTarget = null;
 let endgameState = null;
 let dismissedEndgameKey = null;
+let pendingPromotion = null;
 
 let board = createInitialBoard();
 let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn, enPassantTarget: cloneEnPassantTarget(enPassantTarget) }];
@@ -71,6 +76,9 @@ setMode(mode);
 function wireEvents() {
   moveModeBtn.addEventListener("click", () => setMode("move"));
   placeModeBtn.addEventListener("click", () => setMode("place"));
+  settingsMenuBtn.addEventListener("click", () => {
+    settingsSectionEl.classList.toggle("hidden");
+  });
   mySideSelect.addEventListener("change", () => {
     mySide = mySideSelect.value;
     render();
@@ -152,6 +160,12 @@ function setMode(nextMode) {
   flipVerticalBtn.disabled = !isPlace;
   piecePalette.classList.toggle("hidden", !isPlace);
   placeActionsEl.classList.toggle("hidden", !isPlace);
+
+  if (mode === "place") {
+    endgameModalEl.classList.add("hidden");
+  }
+  pendingPromotion = null;
+  promotionModalEl.classList.add("hidden");
 
   clearSelections();
   render();
@@ -355,6 +369,10 @@ function onSquareClick(row, col) {
     return;
   }
 
+  if (pendingPromotion) {
+    return;
+  }
+
   if (mode === "place") {
     handlePlaceModeClick(row, col);
     return;
@@ -462,10 +480,24 @@ function commitMove(from, move, movingPiece, capturedPiece) {
     };
   }
 
+  const isPromotion = movingPiece[1] === "p" && (to.row === 0 || to.row === 7);
+  if (isPromotion) {
+    showPromotionModal({ from, to, movingPiece, capturedPiece });
+    return;
+  }
+
+  finalizeMoveAfterBoardUpdate(from, to, movingPiece, capturedPiece, null);
+}
+
+function finalizeMoveAfterBoardUpdate(from, to, movingPiece, capturedPiece, promotionType) {
+  if (promotionType) {
+    board[to.row][to.col] = `${movingPiece[0]}${promotionType}`;
+  }
+
   currentTurn = currentTurn === "w" ? "b" : "w";
   updateGameStateLabel();
 
-  let notation = buildSanNotation(movingPiece, from, to, capturedPiece);
+  let notation = buildSanNotation(movingPiece, from, to, capturedPiece, promotionType);
   if (gameStateLabel.includes("Checkmate")) {
     notation += "#";
   } else if (gameStateLabel.includes("Check:")) {
@@ -475,6 +507,32 @@ function commitMove(from, move, movingPiece, capturedPiece) {
   recordMove(notation);
   clearSelections();
   render();
+}
+
+function showPromotionModal(payload) {
+  pendingPromotion = payload;
+  promotionChoicesEl.innerHTML = "";
+
+  ["q", "r", "b", "n"].forEach((type) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = PIECE_UNICODE[`${payload.movingPiece[0]}${type}`];
+    button.addEventListener("click", () => applyPromotion(type));
+    promotionChoicesEl.append(button);
+  });
+
+  promotionModalEl.classList.remove("hidden");
+}
+
+function applyPromotion(type) {
+  if (!pendingPromotion) {
+    return;
+  }
+
+  const { from, to, movingPiece, capturedPiece } = pendingPromotion;
+  pendingPromotion = null;
+  promotionModalEl.classList.add("hidden");
+  finalizeMoveAfterBoardUpdate(from, to, movingPiece, capturedPiece, type);
 }
 
 function animateMove(from, move, movingPiece) {
@@ -528,7 +586,7 @@ function getSquareElement(row, col) {
   return boardEl.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
 }
 
-function buildSanNotation(piece, from, to, capturedPiece) {
+function buildSanNotation(piece, from, to, capturedPiece, promotionType = null) {
   const pieceType = piece[1];
   const piecePrefix = PIECE_LETTER[pieceType];
   const capture = Boolean(capturedPiece);
@@ -536,7 +594,8 @@ function buildSanNotation(piece, from, to, capturedPiece) {
 
   if (pieceType === "p") {
     const pawnPrefix = capture ? FILES[from.col] : "";
-    return `${pawnPrefix}${capture ? "x" : ""}${dest}`;
+    const promotionSuffix = promotionType ? `=${PIECE_LETTER[promotionType]}` : "";
+    return `${pawnPrefix}${capture ? "x" : ""}${dest}${promotionSuffix}`;
   }
 
   return `${piecePrefix}${capture ? "x" : ""}${dest}`;
@@ -583,6 +642,11 @@ function getEndgameKey(state) {
 }
 
 function renderEndgameModal() {
+  if (mode === "place") {
+    endgameModalEl.classList.add("hidden");
+    return;
+  }
+
   if (!endgameState) {
     endgameModalEl.classList.add("hidden");
     dismissedEndgameKey = null;
@@ -722,6 +786,8 @@ function clearBoard() {
   board = Array.from({ length: 8 }, () => Array(8).fill(""));
   currentTurn = "w";
   enPassantTarget = null;
+  pendingPromotion = null;
+  promotionModalEl.classList.add("hidden");
   clearSelections();
   resetHistoryFromCurrentBoard();
   updateGameStateLabel();
@@ -732,6 +798,8 @@ function resetBoard() {
   board = createInitialBoard();
   currentTurn = "w";
   enPassantTarget = null;
+  pendingPromotion = null;
+  promotionModalEl.classList.add("hidden");
   clearSelections();
   resetHistoryFromCurrentBoard();
   updateGameStateLabel();

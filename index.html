@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess Predictor Board</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section id="controlsPanel" class="controls">
+        <div class="controls-header">
+          <button id="menuBurgerBtn" class="menu-burger" type="button" aria-label="Toggle menu">☰</button>
+          <span class="menu-item-title">Chess Capture Overlay</span>
+        </div>
+
+        <div id="controlsBody" class="controls-body">
+          <div class="mode-switch" role="group" aria-label="Board interaction mode">
+            <button id="moveModeBtn" class="active">Move mode</button>
+            <button id="placeModeBtn">Place mode</button>
+            <button id="settingsMenuBtn" class="settings-btn" type="button" aria-label="Open settings">⚙️</button>
+          </div>
+
+          <div id="settingsSection" class="settings-section hidden">
+            <button id="switchTurnBtn" type="button" class="top-action">Switch turn</button>
+
+            <label class="smooth-toggle">
+              <input id="smoothMoveToggle" type="checkbox" />
+              Smooth moving
+            </label>
+
+            <div class="side-toggle">
+              <label for="mySideSelect">My side (green overlay)</label>
+              <select id="mySideSelect">
+                <option value="w">White</option>
+                <option value="b">Black</option>
+              </select>
+            </div>
+
+            <div class="side-toggle">
+              <label for="boardSideSelect">Board perspective</label>
+              <select id="boardSideSelect">
+                <option value="w">White at bottom</option>
+                <option value="b">Black at bottom</option>
+              </select>
+            </div>
+
+            <div class="opacity-controls">
+              <label for="greenOpacity">Green opacity</label>
+              <input id="greenOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.16" />
+
+              <label for="redOpacity">Red opacity</label>
+              <input id="redOpacity" type="range" min="0.05" max="0.8" step="0.01" value="0.16" />
+            </div>
+          </div>
+
+          <fieldset id="piecePalette" class="palette" disabled>
+            <legend>Place piece</legend>
+            <div class="palette-group">
+              <h3>White</h3>
+              <div id="whitePalette" class="palette-grid"></div>
+            </div>
+            <div class="palette-group">
+              <h3>Black</h3>
+              <div id="blackPalette" class="palette-grid"></div>
+            </div>
+            <div class="palette-group">
+              <h3>Tools</h3>
+              <div id="toolPalette" class="palette-grid"></div>
+            </div>
+          </fieldset>
+
+          <div id="placeActions" class="place-actions">
+            <button id="clearBoardBtn" type="button" disabled>Clear board</button>
+            <button id="resetBoardBtn" type="button" disabled>Reset</button>
+            <button id="flipHorizontalBtn" type="button" disabled>Flip X (top↔bottom)</button>
+            <button id="flipVerticalBtn" type="button" disabled>Flip Y (left↔right)</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="board-wrap">
+        <div id="board" class="board" aria-label="Chess board"></div>
+        <div class="board-nav">
+          <button id="undoBtn" type="button">← Undo</button>
+          <button id="redoBtn" type="button">Forward →</button>
+          <button id="historyToggleBtn" class="history-toggle-mobile" type="button">☰ History</button>
+        </div>
+      </section>
+
+      <aside id="historyPanel" class="history-panel">
+        <div class="history-header"><h2>Move History</h2><button id="historyCloseBtn" class="history-close" type="button">✕</button></div>
+        <p id="statusText" class="status-text"></p>
+        <ol id="historyList" class="history-list"></ol>
+      </aside>
+    </main>
+
+    <div id="endgameModal" class="endgame-modal hidden" role="dialog" aria-modal="true" aria-labelledby="endgameTitle">
+      <div class="endgame-card">
+        <h2 id="endgameTitle"></h2>
+        <p id="endgameMessage"></p>
+        <button id="endgameCloseBtn" type="button">Close</button>
+      </div>
+    </div>
+
+    <div id="promotionModal" class="endgame-modal hidden" role="dialog" aria-modal="true" aria-labelledby="promotionTitle">
+      <div class="endgame-card">
+        <h2 id="promotionTitle">Pawn Promotion</h2>
+        <p>Choose a piece for promotion.</p>
+        <div id="promotionChoices" class="promotion-choices"></div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

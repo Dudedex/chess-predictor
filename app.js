@@ -786,6 +786,7 @@ function clearBoard() {
   board = Array.from({ length: 8 }, () => Array(8).fill(""));
   currentTurn = "w";
   enPassantTarget = null;
+  dismissedEndgameKey = "stalemate";
   pendingPromotion = null;
   promotionModalEl.classList.add("hidden");
   clearSelections();
@@ -798,6 +799,7 @@ function resetBoard() {
   board = createInitialBoard();
   currentTurn = "w";
   enPassantTarget = null;
+  dismissedEndgameKey = "stalemate";
   pendingPromotion = null;
   promotionModalEl.classList.add("hidden");
   clearSelections();

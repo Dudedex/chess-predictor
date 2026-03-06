@@ -14,6 +14,7 @@ const PIECE_ASSET = {
 };
 const PIECE_LETTER = { p: "", n: "N", b: "B", r: "R", q: "Q", k: "K" };
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
+const SMOOTH_MOVE_STORAGE_KEY = "chessPredictor.smoothMoveEnabled";
 
 const boardEl = document.getElementById("board");
 const moveModeBtn = document.getElementById("moveModeBtn");
@@ -75,6 +76,9 @@ let historySnapshots = [{ board: cloneBoard(board), turn: currentTurn, enPassant
 let moveHistory = [];
 let historyPointer = 0;
 
+smoothMoveEnabled = loadSmoothMovePreference();
+smoothMoveToggle.checked = smoothMoveEnabled;
+
 applyStateFromUrl();
 initPalette();
 wireEvents();
@@ -118,6 +122,7 @@ function wireEvents() {
   switchTurnBtn.addEventListener("click", switchTurn);
   smoothMoveToggle.addEventListener("change", () => {
     smoothMoveEnabled = smoothMoveToggle.checked;
+    storeSmoothMovePreference(smoothMoveEnabled);
   });
   clearBoardBtn.addEventListener("click", clearBoard);
   flipHorizontalBtn.addEventListener("click", flipBoardHorizontally);
@@ -170,6 +175,8 @@ function setMode(nextMode) {
   flipVerticalBtn.disabled = !isPlace;
   piecePalette.classList.toggle("hidden", !isPlace);
   placeActionsEl.classList.toggle("hidden", !isPlace);
+  settingsSectionEl.classList.toggle("hidden", true);
+  settingsMenuBtn.classList.toggle("hidden", mode !== "move");
 
   if (mode === "place") {
     endgameModalEl.classList.add("hidden");
@@ -374,6 +381,9 @@ function onSquareRightClick(event, row, col) {
     return;
   }
   event.preventDefault();
+  if (mode !== "place") {
+    return;
+  }
   if (!board[row][col]) {
     return;
   }
@@ -570,6 +580,8 @@ function animateMove(from, move, movingPiece) {
   const ghost = document.createElement("span");
   ghost.className = "piece moving-piece-ghost";
   ghost.append(createPieceImage(movingPiece));
+  ghost.style.width = `${fromRect.width * 0.74}px`;
+  ghost.style.height = `${fromRect.height * 0.74}px`;
   ghost.style.left = `${fromRect.left + fromRect.width / 2}px`;
   ghost.style.top = `${fromRect.top + fromRect.height / 2}px`;
   document.body.append(ghost);
@@ -1168,4 +1180,21 @@ function key(row, col) {
 
 function isInBounds(row, col) {
   return row >= 0 && row < 8 && col >= 0 && col < 8;
+}
+
+function loadSmoothMovePreference() {
+  try {
+    const stored = localStorage.getItem(SMOOTH_MOVE_STORAGE_KEY);
+    return stored === "true";
+  } catch {
+    return false;
+  }
+}
+
+function storeSmoothMovePreference(value) {
+  try {
+    localStorage.setItem(SMOOTH_MOVE_STORAGE_KEY, value ? "true" : "false");
+  } catch {
+    // Ignore unavailable storage.
+  }
 }

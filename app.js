@@ -1,6 +1,16 @@
-const PIECE_UNICODE = {
-  wk: "♚", wq: "♛", wr: "♜", wb: "♝", wn: "♞", wp: "♟",
-  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
+const PIECE_ASSET = {
+  wk: "assets/pieces/wK.svg",
+  wq: "assets/pieces/wQ.svg",
+  wr: "assets/pieces/wR.svg",
+  wb: "assets/pieces/wB.svg",
+  wn: "assets/pieces/wN.svg",
+  wp: "assets/pieces/wP.svg",
+  bk: "assets/pieces/bK.svg",
+  bq: "assets/pieces/bQ.svg",
+  br: "assets/pieces/bR.svg",
+  bb: "assets/pieces/bB.svg",
+  bn: "assets/pieces/bN.svg",
+  bp: "assets/pieces/bP.svg",
 };
 const PIECE_LETTER = { p: "", n: "N", b: "B", r: "R", q: "Q", k: "K" };
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
@@ -190,14 +200,23 @@ function createPaletteButton(piece) {
   const button = document.createElement("button");
   button.type = "button";
   button.title = piece;
-  button.textContent = PIECE_UNICODE[piece];
-  button.classList.add(piece[0] === "w" ? "palette-piece-white" : "palette-piece-black");
+  button.append(createPieceImage(piece, "palette-piece-image"));
   button.classList.toggle("selected", piece === selectedPalettePiece);
   button.addEventListener("click", () => {
     selectedPalettePiece = piece;
     updateSelectedPaletteButton(button);
   });
   return button;
+}
+
+
+function createPieceImage(piece, className = "piece-image") {
+  const img = document.createElement("img");
+  img.src = PIECE_ASSET[piece];
+  img.alt = piece;
+  img.className = className;
+  img.draggable = false;
+  return img;
 }
 
 function updateSelectedPaletteButton(activeButton) {
@@ -266,8 +285,8 @@ function render() {
       const piece = board[row][col];
       if (piece) {
         const pieceEl = document.createElement("span");
-        pieceEl.className = `piece ${piece[0] === "w" ? "white" : "black"}`;
-        pieceEl.textContent = PIECE_UNICODE[piece];
+        pieceEl.className = "piece";
+        pieceEl.append(createPieceImage(piece));
         square.append(pieceEl);
       }
 
@@ -516,7 +535,7 @@ function showPromotionModal(payload) {
   ["q", "r", "b", "n"].forEach((type) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = PIECE_UNICODE[`${payload.movingPiece[0]}${type}`];
+    button.append(createPieceImage(`${payload.movingPiece[0]}${type}`, "promotion-piece-image"));
     button.addEventListener("click", () => applyPromotion(type));
     promotionChoicesEl.append(button);
   });
@@ -549,8 +568,8 @@ function animateMove(from, move, movingPiece) {
   const dy = toRect.top - fromRect.top;
 
   const ghost = document.createElement("span");
-  ghost.className = `piece moving-piece-ghost ${movingPiece[0] === "w" ? "white" : "black"}`;
-  ghost.textContent = PIECE_UNICODE[movingPiece];
+  ghost.className = "piece moving-piece-ghost";
+  ghost.append(createPieceImage(movingPiece));
   ghost.style.left = `${fromRect.left + fromRect.width / 2}px`;
   ghost.style.top = `${fromRect.top + fromRect.height / 2}px`;
   document.body.append(ghost);
